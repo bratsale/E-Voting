@@ -120,4 +120,50 @@ public class PKIUtils {
       pemWriter.flush();
     }
   }
+
+  // 5. Metoda za izdavanje sertifikata krajnjem korisniku (Glasaču ili
+  // Organizatoru) od strane odgovarajućeg CA
+  public static X509Certificate createUserCertificate(
+      KeyPair userKeyPair,
+      String userSubjectDN,
+      X509Certificate caCert,
+      PrivateKey caPrivateKey) throws Exception {
+
+    X500Name issuerName = X500Name.getInstance(caCert.getSubjectX500Principal().getEncoded());
+    X500Name subjectName = new X500Name(userSubjectDN);
+
+    BigInteger serialNumber = new BigInteger(64, new SecureRandom());
+    Date notBefore = new Date();
+    Date notAfter = new Date(notBefore.getTime() + (365L * 24 * 60 * 60 * 1000)); // Validnost 1 godina za korisnike
+
+    X509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(
+        issuerName,
+        serialNumber,
+        notBefore,
+        notAfter,
+        subjectName,
+        userKeyPair.getPublic());
+
+    // EKSTENZIJA: Basic Constraints -> Pošto je ovo krajnji korisnik (a NE CA
+    // tijelo), stavljamo false!
+    certBuilder.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
+
+    // EKSTENZIJA: Key Usage -> Definišemo za šta se ključ smije koristiti
+    // Krajnji korisnik koristi ključ za digitalni potpis (Digital Signature) i
+    // nelatentnost (Non-Repudiation)
+    certBuilder.addExtension(Extension.keyUsage, true,
+        new org.bouncycastle.asn1.x509.KeyUsage(
+            org.bouncycastle.asn1.x509.KeyUsage.digitalSignature |
+                org.bouncycastle.asn1.x509.KeyUsage.nonRepudiation));
+
+    // Potpisujemo privatnim ključem CA tijela (Organizacionog ili Glasačkog)
+    ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA")
+        .setProvider("BC")
+        .build(caPrivateKey);
+
+    X509CertificateHolder certHolder = certBuilder.build(signer);
+    return new JcaX509CertificateConverter()
+        .setProvider("BC")
+        .getCertificate(certHolder);
+  }
 }
