@@ -1,7 +1,9 @@
 package org.etf.evoting;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.etf.evoting.pki.PKIUtils;
+import org.etf.evoting.pki.manager.KeyManager;
+import org.etf.evoting.pki.model.RootCA;
+import org.etf.evoting.pki.model.SubordinateCA;
 
 import java.security.KeyPair;
 import java.security.Security;
@@ -9,74 +11,59 @@ import java.security.cert.X509Certificate;
 
 public class Main {
   public static void main(String[] args) {
+    // Registracija Bouncy Castle provajdera
     Security.addProvider(new BouncyCastleProvider());
 
     try {
-      System.out.println("[*] KORAK 1: Generisanje krovne CA infrastrukture...");
+      System.out.println("[*] Inicijalizacija PKI sistema...");
 
-      // Root CA
-      KeyPair rootKeyPair = PKIUtils.generateRSAKeyPair(4096);
+      // 1. Inicijalizacija Root CA (Učitava postojeći ili kreira novi ako ga nema)
       String rootDN = "CN=ETF Evoting Root CA, O=ETF Banja Luka, C=BA";
-      X509Certificate rootCert = PKIUtils.createRootCACertificate(rootKeyPair, rootDN);
-      PKIUtils.saveToPEM(rootKeyPair.getPrivate(), "pki/root-ca", "root.key");
-      PKIUtils.saveToPEM(rootCert, "pki/root-ca", "root.crt");
+      RootCA rootCA = new RootCA("pki/root-ca", rootDN);
+      System.out.println("[✓] Root CA je spreman (objekat inicijalizovan).");
 
-      // Organizacioni CA
-      KeyPair orgCAKeyPair = PKIUtils.generateRSAKeyPair(2048);
-      String orgCADN = "CN=ETF Evoting Organizacioni CA, O=ETF Banja Luka, C=BA";
-      X509Certificate orgCACert = PKIUtils.createSubordinateCACertificate(
-          orgCAKeyPair, orgCADN, rootCert, rootKeyPair.getPrivate());
-      PKIUtils.saveToPEM(orgCAKeyPair.getPrivate(), "pki/organizacioni-ca", "organizacioni.key");
-      PKIUtils.saveToPEM(orgCACert, "pki/organizacioni-ca", "organizacioni.crt");
+      // 2. Inicijalizacija podređenih CA tijela preko Root CA objekta
+      String orgDN = "CN=ETF Evoting Organizacioni CA, O=ETF Banja Luka, C=BA";
+      SubordinateCA organizacioniCA = rootCA.createSubordinateCA(
+          "pki/organizacioni-ca", orgDN, "organizacioni", "organizacioni");
+      System.out.println("[✓] Organizacioni CA je spreman.");
 
-      // Glasacki CA
-      KeyPair glasackiCAKeyPair = PKIUtils.generateRSAKeyPair(2048);
-      String glasackiCADN = "CN=ETF Evoting Glasacki CA, O=ETF Banja Luka, C=BA";
-      X509Certificate glasackiCACert = PKIUtils.createSubordinateCACertificate(
-          glasackiCAKeyPair, glasackiCADN, rootCert, rootKeyPair.getPrivate());
-      PKIUtils.saveToPEM(glasackiCAKeyPair.getPrivate(), "pki/glasacki-ca", "glasacki.key");
-      PKIUtils.saveToPEM(glasackiCACert, "pki/glasacki-ca", "glasacki.crt");
-
-      System.out.println("[✓] CA infrastruktura je spremna.\n");
+      String glasackiDN = "CN=ETF Evoting Glasacki CA, O=ETF Banja Luka, C=BA";
+      SubordinateCA glasackiCA = rootCA.createSubordinateCA(
+          "pki/glasacki-ca", glasackiDN, "glasacki", "glasacki");
+      System.out.println("[✓] Glasacki CA je spreman.\n");
 
       // ==========================================
-      // KORAK 2: SIMULACIJA REGISTRACIJE KORISNIKA
+      // SIMULACIJA IZDAVANJA KORISNIČKIH SERTIFIKATA
       // ==========================================
-      System.out.println("[*] KORAK 2: Registracija korisnika i izdavanje sertifikata...");
+      System.out.println("[*] Simulacija registracije krajnjih korisnika...");
 
-      // 1. Registracija Organizatora (npr. Sasa)
-      System.out.println("[+] Generisanje kljuceva za organizatora Sasa...");
-      KeyPair organizatorKeyPair = PKIUtils.generateRSAKeyPair(2048); // Korisnički ključevi su 2048 bita
-      String organizatorDN = "CN=Sasa Organizator, OU=Administracija, O=ETF Banja Luka, C=BA";
+      // Registracija novog organizatora (npr. Sasa)
+      System.out.println("[+] Kreiranje profila za organizatora [Sasa]...");
+      KeyPair sasaKeyPair = KeyManager.generateRSAKeyPair(2048);
+      String sasaDN = "CN=Sasa Organizator, OU=Uprava, O=ETF Banja Luka, C=BA";
 
-      // Organizacioni CA potpisuje Sasin sertifikat
-      X509Certificate organizatorCert = PKIUtils.createUserCertificate(
-          organizatorKeyPair, organizatorDN, orgCACert, orgCAKeyPair.getPrivate());
+      // Izdavanje vrši isključivo Organizacioni CA objekat
+      X509Certificate sasaCert = organizacioniCA.issueUserCertificate(sasaKeyPair, sasaDN);
+      KeyManager.saveToPEM(sasaKeyPair.getPrivate(), "pki/korisnici/organizatori", "sasa.key");
+      KeyManager.saveToPEM(sasaCert, "pki/korisnici/organizatori", "sasa.crt");
+      System.out.println("[✓] Sertifikat za [Sasa] uspjesno izdat.");
 
-      // Čuvamo Sasin par u poseban folder za korisnike
-      PKIUtils.saveToPEM(organizatorKeyPair.getPrivate(), "pki/korisnici/organizatori", "sasa.key");
-      PKIUtils.saveToPEM(organizatorCert, "pki/korisnici/organizatori", "sasa.crt");
-      System.out.println("[✓] Sertifikat za organizatora [Sasa] uspjesno izdat od strane Organizacionog CA.");
+      // Registracija novog glasača (npr. Marko)
+      System.out.println("[+] Kreiranje profila za glasaca [Marko]...");
+      KeyPair markoKeyPair = KeyManager.generateRSAKeyPair(2048);
+      String markoDN = "UID=indeks-123/23, CN=Marko Glasac, OU=Studenti, O=ETF Banja Luka, C=BA";
 
-      // 2. Registracija Glasača (npr. Marko)
-      System.out.println("[+] Generisanje kljuceva za glasaca Marko...");
-      KeyPair glasacKeyPair = PKIUtils.generateRSAKeyPair(2048);
-      String glasacDN = "UID=123456, CN=Marko Glasac, OU=Studenti, O=ETF Banja Luka, C=BA"; // UID može biti broj
-                                                                                            // indeksa
+      // Izdavanje vrši isključivo Glasački CA objekat
+      X509Certificate markoCert = glasackiCA.issueUserCertificate(markoKeyPair, markoDN);
+      KeyManager.saveToPEM(markoKeyPair.getPrivate(), "pki/korisnici/glasaci", "marko.key");
+      KeyManager.saveToPEM(markoCert, "pki/korisnici/glasaci", "marko.crt");
+      System.out.println("[✓] Sertifikat za [Marko] uspjesno izdat.");
 
-      // Glasački CA potpisuje Markov sertifikat
-      X509Certificate glasacCert = PKIUtils.createUserCertificate(
-          glasacKeyPair, glasacDN, glasackiCACert, glasackiCAKeyPair.getPrivate());
-
-      // Čuvamo Markov par
-      PKIUtils.saveToPEM(glasacKeyPair.getPrivate(), "pki/korisnici/glasaci", "marko.key");
-      PKIUtils.saveToPEM(glasacCert, "pki/korisnici/glasaci", "marko.crt");
-      System.out.println("[✓] Sertifikat za glasaca [Marko] uspjesno izdat od strane Glasackog CA.");
-
-      System.out.println("\n[✓] SVE JE PROŠLO TOP! Korisnicki sertifikati su sacuvani na disk.");
+      System.out.println("\n[✓] REFRAKTORISANI PKI SISTEM RADI BESPREKORNO!");
 
     } catch (Exception e) {
-      System.err.println("[-] Greska tokom end-to-end testa:");
+      System.err.println("[-] Doslo je do greske u novom PKI sistemu:");
       e.printStackTrace();
     }
   }
