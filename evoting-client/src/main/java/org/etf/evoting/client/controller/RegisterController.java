@@ -112,8 +112,8 @@ public class RegisterController {
                 showError("Naziv i ID organizacije su obavezni za organizatora.");
                 return;
             }
-            requestBody.put("organizationName", orgName);
-            requestBody.put("organizationId", orgId);
+            requestBody.put("orgName", orgName);
+            requestBody.put("orgId", orgId);
         }
 
         try {

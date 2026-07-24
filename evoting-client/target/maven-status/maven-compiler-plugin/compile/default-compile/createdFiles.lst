@@ -3,3 +3,7 @@ org/etf/evoting/client/controller/DashboardController.class
 org/etf/evoting/client/ClientApplication.class
 org/etf/evoting/client/controller/LoginController.class
 org/etf/evoting/client/controller/RegisterController.class
+org/etf/evoting/client/controller/CreateElectionController.class
+org/etf/evoting/client/controller/DashboardController$1.class
+org/etf/evoting/client/model/ElectionDTO.class
+org/etf/evoting/client/controller/DashboardController$2.class

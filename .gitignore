@@ -1,0 +1,16 @@
+# Maven builds
+**/target/
+*.class
+
+# IDE & Editors
+.idea/
+*.iml
+.vscode/
+
+# OS files
+.DS_Store
+
+# PKI osjetljivi fajlovi (opciono, u zavisnosti da li želiš .key i .p12 na repo-u)
+**/pki/korisnici/
+**/*.key
+**/*.p12

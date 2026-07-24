@@ -6,6 +6,7 @@ import java.security.cert.X509Certificate;
 public class UserSession {
     private static UserSession instance;
 
+    private Integer userId; // DODATO
     private String username;
     private String token;
     private String role;
@@ -22,12 +23,16 @@ public class UserSession {
     }
 
     public void cleanUserSession() {
+        userId = null; // DODATO
         username = null;
         token = null;
         role = null;
         privateKey = null;
         certificate = null;
     }
+
+    public Integer getUserId() { return userId; } // DODATO
+    public void setUserId(Integer userId) { this.userId = userId; } // DODATO
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }

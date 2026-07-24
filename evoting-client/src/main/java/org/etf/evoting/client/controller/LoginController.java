@@ -68,14 +68,23 @@ public class LoginController {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                // 2. Parsiranje JSON odgovora (izvlačenje JWT tokena i uloge)
+                // 2. Parsiranje JSON odgovora (izvlačenje JWT tokena, uloge i userId)
                 JsonNode jsonResponse = objectMapper.readTree(response.body());
                 String token = jsonResponse.has("token") ? jsonResponse.get("token").asText() : "";
                 String role = jsonResponse.has("role") ? jsonResponse.get("role").asText() : "ROLE_VOTER";
 
+                // --- DODATO: Izvlačenje userId iz odgovora ---
+                Integer userId = null;
+                if (jsonResponse.has("userId")) {
+                    userId = jsonResponse.get("userId").asInt();
+                } else if (jsonResponse.has("id")) { // Za slučaj da ti backend vraća pod ključem "id"
+                    userId = jsonResponse.get("id").asInt();
+                }
+
                 UserSession.getInstance().setUsername(username);
                 UserSession.getInstance().setToken(token);
                 UserSession.getInstance().setRole(role);
+                UserSession.getInstance().setUserId(userId);
 
                 // 3. Ako je izabran digitalni sertifikat, učitavamo ga u sesiju
                 if (selectedCertFile != null && selectedCertFile.exists()) {

@@ -29,12 +29,10 @@ public class ElectionController {
   public static class CreateElectionRequest {
     public String title;
     public String description;
-    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-    public LocalDateTime startDate;
-    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-    public LocalDateTime endDate;
-    public Integer organizerId; // ID organizatora koji kreira izbore
-    public List<String> options; // Lista naziva kandidata/opcija
+    public String startDate; // Promijenjeno u String!
+    public String endDate;   // Promijenjeno u String!
+    public Integer organizerId;
+    public List<String> options;
   }
 
   /**
@@ -45,18 +43,23 @@ public class ElectionController {
     try {
       // Pronađi organizatora u bazi
       User organizer = userService.getUserById(request.organizerId)
-          .orElseThrow(() -> new IllegalArgumentException("Organizator sa navedenim ID-jem ne postoji."));
+              .orElseThrow(() -> new IllegalArgumentException("Organizator sa navedenim ID-jem ne postoji."));
+
+      // Parsiranje datuma iz String-a
+      LocalDateTime start = LocalDateTime.parse(request.startDate);
+      LocalDateTime end = LocalDateTime.parse(request.endDate);
 
       Election created = electionService.createElection(
-          request.title,
-          request.description,
-          request.startDate,
-          request.endDate,
-          organizer,
-          request.options);
+              request.title,
+              request.description,
+              start,
+              end,
+              organizer,
+              request.options);
 
       return ResponseEntity.ok("Izbori '" + created.getTitle() + "' uspješno kreirani sa ID-jem: " + created.getId());
     } catch (Exception e) {
+      e.printStackTrace(); // Ispisaće nam tačan stack trace u konzoli ako išta drugo pukne!
       return ResponseEntity.badRequest().body(e.getMessage());
     }
   }
@@ -70,18 +73,7 @@ public class ElectionController {
     return ResponseEntity.ok(active);
   }
 
-  /**
-   * Endpoint za ručno aktiviranje izbora (Iz CREATED u ACTIVE).
-   */
-  @PostMapping("/{id}/activate")
-  public ResponseEntity<?> activateElection(@PathVariable Integer id) {
-    try {
-      electionService.activateElection(id);
-      return ResponseEntity.ok("Izbori sa ID-jem " + id + " su uspješno aktivirani.");
-    } catch (Exception e) {
-      return ResponseEntity.badRequest().body(e.getMessage());
-    }
-  }
+
 
   /**
    * Endpoint za završavanje izbora (Iz ACTIVE u FINISHED).

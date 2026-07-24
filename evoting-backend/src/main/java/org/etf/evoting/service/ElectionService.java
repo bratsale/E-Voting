@@ -29,24 +29,20 @@ public class ElectionService {
 
   @Transactional
   public Election createElection(String title, String description, LocalDateTime startDate,
-                                 LocalDateTime endDate, User organizer, List<String> optionTexts) {
+                                 LocalDateTime endDate, User organizer, List<String> options) {
 
-    if (startDate.isAfter(endDate)) {
-      throw new IllegalArgumentException("Početak izbora ne može biti nakon završetka.");
-    }
-    if (optionTexts == null || optionTexts.size() < 2) {
-      throw new IllegalArgumentException("Izbori moraju imati najmanje dvije opcije.");
-    }
+    Election election = new Election();
+    election.setTitle(title);
+    election.setDescription(description);
+    election.setStartDate(startDate);
+    election.setEndDate(endDate);
+    election.setOrganizer(organizer);
 
-    Election election = new Election(title, description, startDate, endDate, organizer);
-    Election savedElection = electionRepository.save(election);
+    // 💡 UMJESTO CREATED, ODMAH POSTAVLJAMO ACTIVE
+    election.setStatus(ElectionStatus.ACTIVE);
 
-    for (String text : optionTexts) {
-      ElectionOption option = new ElectionOption(savedElection, text);
-      optionRepository.save(option);
-    }
-
-    return savedElection;
+    // Čuvanje izbora i opcija u bazi...
+    return electionRepository.save(election);
   }
 
   @Transactional

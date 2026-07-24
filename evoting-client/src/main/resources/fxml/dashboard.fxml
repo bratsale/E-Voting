@@ -28,6 +28,15 @@
                     <Font name="System Bold" size="18.0" />
                 </font>
             </Label>
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <Label text="Aktivna glasanja">
+                    <font>
+                        <Font name="System Bold" size="18.0" />
+                    </font>
+                </Label>
+                <Region HBox.hgrow="ALWAYS" />
+                <Button fx:id="createElectionButton" text="+ Novo Glasanje" onAction="#handleOpenCreateElectionModal" style="-fx-background-color: #2E7D32; -fx-text-fill: white; -fx-font-weight: bold;" visible="false" />
+            </HBox>
             <TableView fx:id="electionsTable" VBox.vgrow="ALWAYS">
                 <columns>
                     <TableColumn fx:id="titleColumn" text="Naziv glasanja" prefWidth="250.0"/>

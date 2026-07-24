@@ -58,11 +58,13 @@ public class AuthController {
     public String token;
     public String username;
     public String role;
+    public Integer userId; // ✅ Dodato polje
 
-    public LoginResponse(String token, String username, String role) {
+    public LoginResponse(String token, String username, String role, Integer userId) {
       this.token = token;
       this.username = username;
       this.role = role;
+      this.userId = userId; // ✅ Postavljanje ID-a
     }
   }
 
@@ -108,9 +110,8 @@ public class AuthController {
       User user = userOpt.get();
       String token = jwtUtil.generateToken(user.getUsername(), user.getId(), user.getRole().name());
 
-      return ResponseEntity.ok(new LoginResponse(token, user.getUsername(), user.getRole().name()));
+      return ResponseEntity.ok(new LoginResponse(token, user.getUsername(), user.getRole().name(), user.getId()));
     } else {
-      // ✅ Vraćamo JSON 401 umesto sirovog String-a
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
               .body(Map.of("message", "Neispravno korisničko ime ili lozinka."));
     }
