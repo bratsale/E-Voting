@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="8c0f91af-baef-4669-88df-c2b2ee5cee57" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/evoting-backend/pki/korisnici/glasaci/marko.crt" beforeDir="false" afterPath="$PROJECT_DIR$/evoting-backend/pki/korisnici/glasaci/marko.crt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evoting-backend/pki/korisnici/organizatori/sasa.crt" beforeDir="false" afterPath="$PROJECT_DIR$/evoting-backend/pki/korisnici/organizatori/sasa.crt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evoting-backend/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/evoting-backend/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/Main.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/controller/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/controller/AuthController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/controller/ElectionController.java" beforeDir="false" afterPath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/controller/ElectionController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/model/User.java" beforeDir="false" afterPath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/model/User.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/repository/UserRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/repository/UserRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/service/CryptoService.java" beforeDir="false" afterPath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/service/CryptoService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/service/ElectionService.java" beforeDir="false" afterPath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/service/ElectionService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/service/UserService.java" beforeDir="false" afterPath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/service/UserService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/service/VotingService.java" beforeDir="false" afterPath="$PROJECT_DIR$/evoting-backend/src/main/java/org/etf/evoting/service/VotingService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evoting-backend/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/evoting-backend/src/main/resources/application.properties" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="DBNavigator.Project.Workspace.Settings">
+    <assistant-settings>
+      <credential-settings>
+        <credentials />
+      </credential-settings>
+      <profile-settings>
+        <profiles />
+      </profile-settings>
+      <mcp-server-settings>
+        <workspace-integration value="false" />
+        <mcp-servers />
+        <mcp-tool-approvals />
+      </mcp-server-settings>
+    </assistant-settings>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/evoting-backend" />
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/src/main/java/org/etf/evoting/Main.java" root0="SKIP_INSPECTION" />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="autoscrollToSource" value="true" />
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3Gu2RF37qNXgdJzQrPB6PvvqBex" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Application.ClientApplication.executor": "Run",
+    "Application.Main.executor": "Run",
+    "Application.Unnamed.executor": "Run",
+    "Downloaded.Files.Path.Enabled": "false",
+    "Maven.evoting [clean].executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Repository.Attach.Annotations": "false",
+    "Repository.Attach.JavaDocs": "false",
+    "Repository.Attach.Sources": "false",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "Spring Boot.Main.executor": "Run",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ide.FileNotInSourceRootChecker.no.check": "true",
+    "full.screen.before.presentation.mode": "false",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/home/sasa/Documents/GitHub/E-Voting/evoting-backend",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.jshint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.jshint": "",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2",
+    "settings.editor.selected.configurable": "editor.preferences.fonts.default"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/main/java/org/etf/evoting/security" />
+    </key>
+  </component>
+  <component name="RunAnythingCache">
+    <option name="myCommands">
+      <command value="mvn clean" />
+    </option>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-63390994e64e-intellij.indexing.shared.core-IU-262.8665.258" />
+        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-IU-262.8665.258" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="8c0f91af-baef-4669-88df-c2b2ee5cee57" name="Changes" comment="" />
+      <created>1784807128837</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1784807128837</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>

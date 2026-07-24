@@ -1,0 +1,5 @@
+org/etf/evoting/client/model/UserSession.class
+org/etf/evoting/client/controller/DashboardController.class
+org/etf/evoting/client/ClientApplication.class
+org/etf/evoting/client/controller/LoginController.class
+org/etf/evoting/client/controller/RegisterController.class

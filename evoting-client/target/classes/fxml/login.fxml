@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="CENTER" spacing="15.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.etf.evoting.client.controller.LoginController">
+    <padding>
+        <Insets bottom="30.0" left="40.0" right="40.0" top="30.0" />
+    </padding>
+
+    <Label text="E-Voting Sistem">
+        <font>
+            <Font name="System Bold" size="24.0" />
+        </font>
+    </Label>
+
+    <Label text="Prijavite se na vaš nalog" textFill="#666666" />
+
+    <Separator prefWidth="200.0" />
+
+    <GridPane vgap="10.0" hgap="10.0" alignment="CENTER">
+        <Label text="Korisničko ime:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+        <TextField fx:id="usernameField" promptText="Unesite username" GridPane.columnIndex="1" GridPane.rowIndex="0" prefWidth="250.0" />
+
+        <Label text="Lozinka:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+        <PasswordField fx:id="passwordField" promptText="Unesite lozinku" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+
+        <Label text="Digitalni sertifikat:" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+        <HBox spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+            <TextField fx:id="certPathField" promptText="Putanja do .p12/.pem" HBox.hgrow="ALWAYS" editable="false" />
+            <Button text="Pretraži..." onAction="#handleBrowseCertificate" />
+        </HBox>
+    </GridPane>
+
+    <Label fx:id="errorLabel" textFill="RED" visible="false" wrapText="true" />
+
+    <Button fx:id="loginButton" defaultButton="true" onAction="#handleLogin" prefWidth="150.0" style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;" text="Prijavi se" />
+
+    <Hyperlink text="Nemate nalog? Registrujte se ovdje" onAction="#handleGoToRegister" />
+</VBox>
+
