@@ -83,14 +83,31 @@ public class DashboardController {
         }
     }
     private void setupActionColumn() {
+        String role = UserSession.getInstance().getRole();
+
         Callback<TableColumn<ElectionDTO, Void>, TableCell<ElectionDTO, Void>> cellFactory = param -> new TableCell<>() {
             private final Button voteButton = new Button("Glasaj");
+            private final Button finishButton = new Button("Završi");
+            private final Button resultsButton = new Button("Rezultati");
 
             {
                 voteButton.setStyle("-fx-background-color: #2E7D32; -fx-text-fill: white; -fx-cursor: hand;");
+                finishButton.setStyle("-fx-background-color: #C62828; -fx-text-fill: white; -fx-cursor: hand;");
+                resultsButton.setStyle("-fx-background-color: #1565C0; -fx-text-fill: white; -fx-cursor: hand;");
+
                 voteButton.setOnAction(event -> {
                     ElectionDTO selectedElection = getTableView().getItems().get(getIndex());
                     handleOpenVotingScreen(selectedElection);
+                });
+
+                finishButton.setOnAction(event -> {
+                    ElectionDTO selectedElection = getTableView().getItems().get(getIndex());
+                    handleFinishElection(selectedElection);
+                });
+
+                resultsButton.setOnAction(event -> {
+                    ElectionDTO selectedElection = getTableView().getItems().get(getIndex());
+                    handleShowResults(selectedElection);
                 });
             }
 
@@ -100,12 +117,64 @@ public class DashboardController {
                 if (empty) {
                     setGraphic(null);
                 } else {
-                    setGraphic(voteButton);
+                    ElectionDTO election = getTableView().getItems().get(getIndex());
+
+                    if ("ORGANIZER".equalsIgnoreCase(role)) {
+                        if ("ACTIVE".equalsIgnoreCase(election.getStatus())) {
+                            setGraphic(finishButton);
+                        } else {
+                            setGraphic(resultsButton);
+                        }
+                    } else {
+                        // Za VOTER ulogu prikazujemo dugme za glasanje
+                        setGraphic(voteButton);
+                    }
                 }
             }
         };
 
         actionColumn.setCellFactory(cellFactory);
+    }
+
+    private void handleFinishElection(ElectionDTO election) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "Da li ste sigurni da želite završiti glasanje: " + election.getTitle() + "?",
+                ButtonType.YES, ButtonType.NO);
+
+        confirm.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.YES) {
+                try {
+                    String token = UserSession.getInstance().getToken();
+                    HttpRequest request = HttpRequest.newBuilder()
+                            .uri(URI.create("http://localhost:8080/api/elections/" + election.getId() + "/finish"))
+                            .header("Authorization", "Bearer " + token)
+                            .POST(HttpRequest.BodyPublishers.noBody())
+                            .build();
+
+                    httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                            .thenAccept(res -> {
+                                Platform.runLater(() -> {
+                                    if (res.statusCode() == 200) {
+                                        Alert alert = new Alert(Alert.AlertType.INFORMATION, "Glasanje je uspješno završeno!");
+                                        alert.show();
+                                        loadActiveElections(); // Osvježi tabelu
+                                    } else {
+                                        Alert alert = new Alert(Alert.AlertType.ERROR, "Greška pri zatvaranju glasanja: " + res.body());
+                                        alert.show();
+                                    }
+                                });
+                            });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+    private void handleShowResults(ElectionDTO election) {
+        // Ovdje otvaraš prozor ili dijalog za pregled rezultata
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, "Otvaranje rezultata za glasanje: " + election.getTitle());
+        alert.show();
     }
 
     private void loadActiveElections() {
