@@ -5,96 +5,166 @@ import org.etf.evoting.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.crypto.SecretKey;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class VotingService {
 
-  private final UserRepository userRepository;
-  private final ElectionRepository electionRepository;
-  private final ElectionOptionRepository optionRepository;
-  private final VotingRegistryRepository registryRepository;
   private final BallotRepository ballotRepository;
+  private final VotingRegistryRepository votingRegistryRepository;
+  private final ElectionRepository electionRepository;
+  private final UserRepository userRepository;
+  private final VoteMetadataRepository voteMetadataRepository;
   private final CryptoService cryptoService;
 
-  public VotingService(UserRepository userRepository,
-      ElectionRepository electionRepository,
-      ElectionOptionRepository optionRepository,
-      VotingRegistryRepository registryRepository,
-      BallotRepository ballotRepository,
-      CryptoService cryptoService) {
-    this.userRepository = userRepository;
-    this.electionRepository = electionRepository;
-    this.optionRepository = optionRepository;
-    this.registryRepository = registryRepository;
+  public VotingService(BallotRepository ballotRepository,
+                       VotingRegistryRepository votingRegistryRepository,
+                       ElectionRepository electionRepository,
+                       UserRepository userRepository,
+                       VoteMetadataRepository voteMetadataRepository,
+                       CryptoService cryptoService) {
     this.ballotRepository = ballotRepository;
+    this.votingRegistryRepository = votingRegistryRepository;
+    this.electionRepository = electionRepository;
+    this.userRepository = userRepository;
+    this.voteMetadataRepository = voteMetadataRepository;
     this.cryptoService = cryptoService;
   }
 
   /**
-   * Izvršavanje sigurnog, kriptografski verifikovanog i anonimnog glasanja.
+   * 1. Slanje i enkripcija glasa
    */
   @Transactional
-  public void castVote(Integer userId, Integer electionId, Integer optionId, String digitalSignature) {
+  public String castVote(Integer electionId, Integer optionId, Integer userId, String voterSignatureBase64) throws Exception {
 
-    // 1. Dobavi korisnika i provjeri da li postoji (treba nam njegov sertifikat)
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new IllegalArgumentException("Korisnik sa ID-jem " + userId + " ne postoji."));
+    // Provjera dvostrukog glasanja preko VotingRegistry
+    if (votingRegistryRepository.existsByUserIdAndElectionId(userId, electionId)) {
+      throw new IllegalStateException("Već ste glasali na ovim izborima!");
+    }
 
-    // 2. Dobavi izbore i provjeri da li su aktivni
+    User voter = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("Korisnik ne postoji."));
+
     Election election = electionRepository.findById(electionId)
-        .orElseThrow(() -> new IllegalArgumentException("Izbori sa ID-jem " + electionId + " ne postoje."));
+            .orElseThrow(() -> new IllegalArgumentException("Izbori ne postoje."));
 
-    if (election.getStatus() != ElectionStatus.ACTIVE) {
-      throw new IllegalStateException("Glasanje nije dozvoljeno jer izbori nisu aktivni.");
+    // Evidentiramo da je korisnik glasao (bez čuvanja opcije)
+    VotingRegistry registry = new VotingRegistry(voter, election);
+    votingRegistryRepository.save(registry);
+
+    // Preuzimanje javnog ključa Organizatora
+    User organizer = election.getOrganizer();
+    if (organizer == null || organizer.getCertificatePem() == null) {
+      throw new IllegalStateException("Organizator nema važeći sertifikat za ove izbore.");
     }
+    X509Certificate organizerCert = cryptoService.convertPemToCertificate(organizer.getCertificatePem());
+    PublicKey organizerPublicKey = organizerCert.getPublicKey();
 
-    LocalDateTime sada = LocalDateTime.now();
-    if (sada.isBefore(election.getStartDate()) || sada.isAfter(election.getEndDate())) {
-      throw new IllegalStateException("Izbori su van definisanog vremenskog roka.");
-    }
+    // Generisanje simetričnog AES-256 ključa i IV-a
+    SecretKey aesKey = cryptoService.generateAESKey();
+    byte[] iv = new byte[12]; // GCM IV
+    new SecureRandom().nextBytes(iv);
 
-    // 3. Provjeri da li je korisnik već glasao (Zaštita od duplog glasanja)
-    boolean vecGlasao = registryRepository.existsByUserIdAndElectionId(userId, electionId);
-    if (vecGlasao) {
-      throw new IllegalStateException("Korisnik je već iskoristio pravo glasa na ovim izborima.");
-    }
+    // Enkripcija opcije (optionId) AES ključem
+    byte[] encryptedVoteBytes = cryptoService.encryptVoteWithAES(optionId.toString(), aesKey, iv);
 
-    // 4. Provjeri da li opcija pripada tim izborima
-    ElectionOption option = optionRepository.findById(optionId)
-        .orElseThrow(() -> new IllegalArgumentException("Izabrana opcija ne postoji."));
+    // Enkripcija AES ključa RSA javnim ključem organizatora
+    byte[] encryptedAesKeyBytes = cryptoService.encryptAESKeyWithOrganizerPublicKey(aesKey, organizerPublicKey);
 
-    if (!option.getElection().getId().equals(electionId)) {
-      throw new IllegalArgumentException("Izabrana opcija ne pripada ovim izborima.");
-    }
+    // Generisanje jedinstvenog koda potvrde (Receipt Code)
+    String receiptCode = UUID.randomUUID().toString();
 
-    // 5. KRIPTOGRAFSKA VERIFIKACIJA: Provjeri digitalni potpis glasačkog listića
-    // Protokol: Klijent potpisuje string u formatu "electionId:optionId"
-    String dataToVerify = electionId + ":" + optionId;
-    System.out.println("[DEBUG] Verification Payload: " + dataToVerify);
-    System.out.println("[DEBUG] Public Key used: " + user.getCertificatePem()); // ili public key
-    boolean isSignatureValid = cryptoService.verifySignature(user.getCertificatePem(), dataToVerify, digitalSignature);
+    // Pakovanje u Ballot
+    Ballot ballot = new Ballot();
+    ballot.setElection(election);
+    ballot.setEncryptedVote(Base64.getEncoder().encodeToString(encryptedVoteBytes));
+    ballot.setEncryptedSymKey(Base64.getEncoder().encodeToString(encryptedAesKeyBytes));
+    ballot.setIvBase64(Base64.getEncoder().encodeToString(iv));
+    ballot.setDigitalSignature(voterSignatureBase64);
+    ballot.setReceiptCode(receiptCode);
 
-    if (!isSignatureValid) {
-      throw new SecurityException("Kritična greška: Digitalni potpis glasačkog listića nije validan!");
-    }
+    Ballot savedBallot = ballotRepository.save(ballot);
 
-    // 6. Zabilježi u registar da je korisnik glasao (Sprečavanje duplog glasanja)
-    VotingRegistry registryEntry = new VotingRegistry(user, election);
-    registryRepository.save(registryEntry);
+    // Odvojeno čuvanje metapodataka sa HMAC-om
+    LocalDateTime now = LocalDateTime.now();
+    String metadataRaw = savedBallot.getId() + ":" + electionId + ":" + now.toString();
+    String hmac = cryptoService.calculateMetadataHMAC(metadataRaw);
 
-    // 7. Ubaci potpuno anonimni glasački listić (Nema reference ka korisniku!)
-    Ballot ballot = new Ballot(election, option, digitalSignature);
-    ballotRepository.save(ballot);
+    VoteMetadata metadata = new VoteMetadata();
+    metadata.setVoteId(savedBallot.getId());
+    metadata.setElectionId(electionId);
+    metadata.setTimestamp(now);
+    metadata.setHmac(hmac);
+
+    voteMetadataRepository.save(metadata);
+
+    return receiptCode;
   }
 
   /**
-   * Rezultati izbora za prebrojavanje glasova.
+   * 2. Brojanje glasova od strane Organizatora dekripcijom njegovim privatnim ključem
    */
-  public List<Ballot> getBallotsForElection(Integer electionId) {
+  public Map<Integer, Long> tallyVotes(Integer electionId, PrivateKey organizerPrivateKey) throws Exception {
     Election election = electionRepository.findById(electionId)
-        .orElseThrow(() -> new IllegalArgumentException("Izbori ne postoje."));
-    return ballotRepository.findByElection(election);
+            .orElseThrow(() -> new IllegalArgumentException("Izbori ne postoje."));
+
+    List<Ballot> ballots = ballotRepository.findByElection(election);
+    Map<Integer, Long> results = new HashMap<>();
+
+    for (Ballot ballot : ballots) {
+      byte[] encryptedAesKey = Base64.getDecoder().decode(ballot.getEncryptedSymKey());
+      byte[] encryptedVote = Base64.getDecoder().decode(ballot.getEncryptedVote());
+      byte[] iv = Base64.getDecoder().decode(ballot.getIvBase64());
+
+      // Dešifrovanje AES ključa pomoću privatnog ključa Organizatora
+      SecretKey aesKey = cryptoService.decryptAESKeyWithOrganizerPrivateKey(encryptedAesKey, organizerPrivateKey);
+
+      // Dešifrovanje samog glasa (ID opcije)
+      String optionIdStr = cryptoService.decryptVoteWithAES(encryptedVote, aesKey, iv);
+      Integer optionId = Integer.parseInt(optionIdStr);
+
+      results.put(optionId, results.getOrDefault(optionId, 0L) + 1);
+    }
+
+    return results;
+  }
+
+  /**
+   * 3. Verifikacija glasa od strane glasača preko receiptCode-a i HMAC metapodataka
+   */
+  public boolean verifyVoteByReceiptCode(String receiptCode) throws Exception {
+    Optional<Ballot> ballotOpt = ballotRepository.findAll().stream()
+            .filter(b -> receiptCode.equals(b.getReceiptCode()))
+            .findFirst();
+
+    if (ballotOpt.isEmpty()) {
+      return false;
+    }
+
+    Ballot ballot = ballotOpt.get();
+    Optional<VoteMetadata> metadataOpt = voteMetadataRepository.findByVoteId(ballot.getId());
+
+    if (metadataOpt.isEmpty()) {
+      return false;
+    }
+
+    VoteMetadata metadata = metadataOpt.get();
+    String expectedRaw = ballot.getId() + ":" + ballot.getElection().getId() + ":" + metadata.getTimestamp().toString();
+    String calculatedHmac = cryptoService.calculateMetadataHMAC(expectedRaw);
+
+    return calculatedHmac.equals(metadata.getHmac());
+  }
+
+  /**
+   * Provjera da li je glasač već glasao
+   */
+  public boolean hasUserVoted(Integer userId, Integer electionId) {
+    return votingRegistryRepository.existsByUserIdAndElectionId(userId, electionId);
   }
 }

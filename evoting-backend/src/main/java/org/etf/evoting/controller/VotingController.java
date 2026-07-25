@@ -1,54 +1,103 @@
 package org.etf.evoting.controller;
 
+import org.etf.evoting.service.CryptoService;
 import org.etf.evoting.service.VotingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.PrivateKey;
+import java.util.Map;
+
 @RestController
-@RequestMapping("/api/vote")
+@RequestMapping("/api/voting")
 public class VotingController {
 
   private final VotingService votingService;
+  private final CryptoService cryptoService;
 
-  public VotingController(VotingService votingService) {
+  public VotingController(VotingService votingService, CryptoService cryptoService) {
     this.votingService = votingService;
+    this.cryptoService = cryptoService;
   }
 
-  /**
-   * DTO za slanje glasačkog listića sa digitalnim potpisom.
-   */
-  public static class VoteRequest {
-    public Integer userId;
+  // DTO klase za zahteve
+  public static class CastVoteRequest {
     public Integer electionId;
     public Integer optionId;
-    public String digitalSignature; // Base64 string potpisan na klijentskoj strani
+    public Integer userId;
+    public String voterSignatureBase64;
+  }
+
+  public static class TallyRequest {
+    public String privateKeyPem; // Privatni ključ organizatora iz njegovog .p12 kontejnera
   }
 
   /**
-   * Endpoint za sigurno i anonimno glasanje.
+   * 1. Slanje glasa
    */
-  @PostMapping
-  public ResponseEntity<?> castVote(@RequestBody VoteRequest request) {
+  @PostMapping("/cast")
+  public ResponseEntity<?> castVote(@RequestBody CastVoteRequest request) {
     try {
-      votingService.castVote(
-          request.userId,
-          request.electionId,
-          request.optionId,
-          request.digitalSignature);
-
-      // Namjerno vraćamo generičku poruku bez detalja o samom listiću
-      // radi očuvanja potpune anonimnosti glasa.
-      return ResponseEntity.ok("Glas je uspješno zabilježen i verifikovan!");
-
-    } catch (IllegalArgumentException | IllegalStateException e) {
-      // Standardne validacione greške (npr. isteklo vrijeme, nepostojeća opcija)
-      return ResponseEntity.badRequest().body(e.getMessage());
-    } catch (SecurityException e) {
-      // Kriptografska greška ukoliko digitalni potpis padne na verifikaciji
-      return ResponseEntity.status(403).body(e.getMessage());
+      String receiptCode = votingService.castVote(
+              request.electionId,
+              request.optionId,
+              request.userId,
+              request.voterSignatureBase64
+      );
+      return ResponseEntity.ok(Map.of(
+              "message", "Glas je uspješno enkriptovan i zabilježen!",
+              "receiptCode", receiptCode
+      ));
+    } catch (IllegalStateException e) {
+      return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
     } catch (Exception e) {
-      // Bilo kakav neočekivani sistemski problem
-      return ResponseEntity.internalServerError().body("Došlo je do greške na serveru: " + e.getMessage());
+      return ResponseEntity.internalServerError().body(Map.of("message", "Greška pri glasanju: " + e.getMessage()));
+    }
+  }
+
+  /**
+   * 2. Provera da li je korisnik već glasao
+   */
+  @GetMapping("/has-voted")
+  public ResponseEntity<?> hasVoted(@RequestParam Integer userId, @RequestParam Integer electionId) {
+    boolean voted = votingService.hasUserVoted(userId, electionId);
+    return ResponseEntity.ok(Map.of("hasVoted", voted));
+  }
+
+  /**
+   * 3. Brojanje glasova (Izvršava organizator)
+   */
+  @PostMapping("/tally/{electionId}")
+  public ResponseEntity<?> tallyVotes(@PathVariable Integer electionId, @RequestBody TallyRequest request) {
+    try {
+      PrivateKey organizerPrivateKey = cryptoService.convertPemToPrivateKey(request.privateKeyPem);
+      Map<Integer, Long> results = votingService.tallyVotes(electionId, organizerPrivateKey);
+      return ResponseEntity.ok(results);
+    } catch (Exception e) {
+      return ResponseEntity.internalServerError().body(Map.of("message", "Greška pri brojanju glasova: " + e.getMessage()));
+    }
+  }
+
+  /**
+   * 4. Verifikacija glasa od strane glasača
+   */
+  @GetMapping("/verify/{receiptCode}")
+  public ResponseEntity<?> verifyVote(@PathVariable String receiptCode) {
+    try {
+      boolean isValid = votingService.verifyVoteByReceiptCode(receiptCode);
+      if (isValid) {
+        return ResponseEntity.ok(Map.of(
+                "valid", true,
+                "message", "Vaš glas je ispravno zabilježen u bazi i HMAC metapodataka je potvrdio neizmenjenost."
+        ));
+      } else {
+        return ResponseEntity.badRequest().body(Map.of(
+                "valid", false,
+                "message", "Glas sa datim kodom nije pronađen ili je integritet metapodataka narušen!"
+        ));
+      }
+    } catch (Exception e) {
+      return ResponseEntity.internalServerError().body(Map.of("message", "Greška pri verifikaciji: " + e.getMessage()));
     }
   }
 }

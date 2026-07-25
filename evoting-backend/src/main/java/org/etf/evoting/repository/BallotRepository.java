@@ -12,6 +12,4 @@ public interface BallotRepository extends JpaRepository<Ballot, Integer> {
   // Povlačenje svih listića za određene izbore radi brojanja/verifikacije
   List<Ballot> findByElection(Election election);
 
-  // Brojanje glasova za konkretnu opciju (kandidata) unutar izbora
-  long countByElectionOptionId(Integer optionId);
 }

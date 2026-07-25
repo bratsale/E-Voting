@@ -39,10 +39,8 @@ public class ElectionService {
     election.setOrganizer(organizer);
     election.setStatus(ElectionStatus.ACTIVE);
 
-    // 1. Prvo sačuvamo izbor da dobije svoj ID
     Election savedElection = electionRepository.save(election);
 
-    // 2. Prolazimo kroz sve opcije iz liste, povezujemo ih sa izborom i spašavamo u bazu
     if (options != null && !options.isEmpty()) {
       for (String optionText : options) {
         ElectionOption option = new ElectionOption(savedElection, optionText);
@@ -52,6 +50,7 @@ public class ElectionService {
 
     return savedElection;
   }
+
   @Transactional
   public void activateElection(Integer electionId) {
     Election election = electionRepository.findById(electionId)
@@ -79,39 +78,27 @@ public class ElectionService {
   }
 
   public List<ElectionDTO> getActiveElections() {
-    // 1. Dohvatamo entitete iz baze
     List<Election> elections = electionRepository.findByStatus(ElectionStatus.ACTIVE);
-    // Napomena: prilagodi naziv metode svom ElectionRepository-ju
-
-    // 2. Mapiramo listu entiteta u listu DTO objekata
     return elections.stream()
             .map(this::mapToDTO)
             .toList();
   }
+
   /**
-   * PREBROJAVANJE GLASOVA:
-   * Računa ukupan broj glasova i raspodjelu po kandidatima/opcijama za date izbore.
+   * Osnovne informacije o glasovima (ukupan broj pristiglih listića).
+   * Zvanično brojanje po opcijama se vrši u VotingService uz privatni ključ.
    */
   @Transactional(readOnly = true)
   public ElectionResultDTO getElectionResults(Integer electionId) {
     Election election = electionRepository.findById(electionId)
             .orElseThrow(() -> new IllegalArgumentException("Izbori ne postoje."));
 
-    // Preuzmi sve izborne opcije za ove izbore
     List<ElectionOption> options = optionRepository.findByElection(election);
     List<Ballot> ballots = ballotRepository.findByElection(election);
 
     Map<String, Long> voteCounts = new HashMap<>();
-
-    // Inicijalizuj sve opcije na 0 glasova
     for (ElectionOption option : options) {
       voteCounts.put(option.getOptionText(), 0L);
-    }
-
-    // Prebroj pristigle glasačke listiće
-    for (Ballot ballot : ballots) {
-      String optionText = ballot.getElectionOption().getOptionText();
-      voteCounts.put(optionText, voteCounts.getOrDefault(optionText, 0L) + 1);
     }
 
     return new ElectionResultDTO(
@@ -123,13 +110,11 @@ public class ElectionService {
   }
 
   private ElectionDTO mapToDTO(Election election) {
-    // 1. Dovuci opcije iz baze i mapiraj u ElectionOptionDTO
     List<ElectionOptionDTO> optionDTOs = optionRepository.findByElection(election)
             .stream()
             .map(opt -> new ElectionOptionDTO(opt.getId(), opt.getOptionText(), election.getId()))
             .toList();
 
-    // 2. Vrati novu instancu record-a sa opcijama
     return new ElectionDTO(
             election.getId(),
             election.getTitle(),
@@ -139,7 +124,7 @@ public class ElectionService {
             election.getEndDate(),
             election.getOrganizer() != null ? election.getOrganizer().getId() : null,
             election.getOrganizer() != null ? election.getOrganizer().getUsername() : null,
-            optionDTOs // Proslijeđena lista opcija
+            optionDTOs
     );
   }
 }

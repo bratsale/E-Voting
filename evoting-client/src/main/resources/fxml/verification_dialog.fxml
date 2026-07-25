@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox spacing="15.0" alignment="CENTER" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.etf.evoting.client.controller.VerificationDialogController"
+      prefWidth="450.0" style="-fx-padding: 20;">
+
+    <Label text="Verifikacija Glasa" style="-fx-font-weight: bold;">
+        <font>
+            <Font size="18.0" />
+        </font>
+    </Label>
+
+    <Label text="Unesite Vaš potvrdni kod (Receipt Code) kako biste provjerili status i integritet glasa:"
+           wrapText="true" textAlignment="CENTER" />
+
+    <TextField fx:id="receiptCodeField" promptText="Unesite Receipt Code (UUID)..." prefWidth="400.0" />
+
+    <Button text="Verifikuj Glas" onAction="#handleVerify" style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;" />
+
+    <Separator prefWidth="200.0" />
+
+    <Label fx:id="statusLabel" wrapText="true" textAlignment="CENTER" style="-fx-font-size: 13px;" />
+</VBox>

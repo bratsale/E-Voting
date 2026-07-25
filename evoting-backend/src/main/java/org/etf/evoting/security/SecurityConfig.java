@@ -39,7 +39,7 @@ public class SecurityConfig {
                         // 3. Pregled izbora i glasanje
                         .requestMatchers("/api/elections/active").authenticated()
                         .requestMatchers("/api/elections/{id}/results").authenticated()
-                        .requestMatchers("/api/vote").hasAnyAuthority("VOTER", "ROLE_VOTER")
+                        .requestMatchers("/api/voting/cast").hasAnyAuthority("VOTER", "ROLE_VOTER", "USER")
 
                         // Za sve ostalo tražimo autentifikaciju
                         .anyRequest().authenticated()

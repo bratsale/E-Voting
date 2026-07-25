@@ -2,6 +2,7 @@ package org.etf.evoting.client.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -20,6 +21,7 @@ import java.net.http.HttpResponse;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
+import java.util.Base64;
 
 public class LoginController {
 
@@ -49,15 +51,57 @@ public class LoginController {
     private void handleLogin() {
         String username = usernameField.getText().trim();
         String password = passwordField.getText().trim();
+        String certPath = certPathField.getText().trim();
 
+        // 1. Provjera osnovnih polja
         if (username.isEmpty() || password.isEmpty()) {
             showError("Molimo unesite korisničko ime i lozinku.");
             return;
         }
 
+        if (certPath.isEmpty()) {
+            showError("Obavezno je priložiti digitalni sertifikat!");
+            return;
+        }
+
+        // Ako fajl nije izabran preko dijaloga već unesen ručno
+        if (selectedCertFile == null || !selectedCertFile.getAbsolutePath().equals(certPath)) {
+            selectedCertFile = new File(certPath);
+        }
+
+        if (!selectedCertFile.exists() || !selectedCertFile.isFile()) {
+            showError("Izabrani fajl sertifikata ne postoji na navedenoj putanji.");
+            return;
+        }
+
+        // 2. Čitanje sertifikata i ključa iz .p12 fajla DOK SE PRIPREMA ZAHTJEV
+        X509Certificate cert = null;
+        PrivateKey privateKey = null;
+        String certPem = null;
+
+        try (FileInputStream fis = new FileInputStream(selectedCertFile)) {
+            KeyStore keyStore = KeyStore.getInstance("PKCS12");
+            keyStore.load(fis, password.toCharArray()); // Lozinka .p12 kontejnera
+
+            String alias = keyStore.aliases().nextElement();
+            privateKey = (PrivateKey) keyStore.getKey(alias, password.toCharArray());
+            cert = (X509Certificate) keyStore.getCertificate(alias);
+
+            certPem = convertToPem(cert);
+
+        } catch (Exception e) {
+            showError("Neuspješno otvaranje sertifikata! Provjerite lozinku naloga/sertifikata.");
+            return;
+        }
+
         try {
-            // 1. Slanje autentifikacionog zahtjeva na backend
-            String jsonBody = String.format("{\"username\":\"%s\", \"password\":\"%s\"}", username, password);
+            // 3. Formiranje JSON zahtjeva sa username, password I certificatePem
+            ObjectNode payload = objectMapper.createObjectNode();
+            payload.put("username", username);
+            payload.put("password", password);
+            payload.put("certificatePem", certPem);
+
+            String jsonBody = objectMapper.writeValueAsString(payload);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("http://localhost:8080/api/auth/login"))
@@ -68,30 +112,27 @@ public class LoginController {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                // 2. Parsiranje JSON odgovora (izvlačenje JWT tokena, uloge i userId)
+                // 4. Parsiranje JSON odgovora
                 JsonNode jsonResponse = objectMapper.readTree(response.body());
                 String token = jsonResponse.has("token") ? jsonResponse.get("token").asText() : "";
                 String role = jsonResponse.has("role") ? jsonResponse.get("role").asText() : "ROLE_VOTER";
 
-                // --- DODATO: Izvlačenje userId iz odgovora ---
                 Integer userId = null;
                 if (jsonResponse.has("userId")) {
                     userId = jsonResponse.get("userId").asInt();
-                } else if (jsonResponse.has("id")) { // Za slučaj da ti backend vraća pod ključem "id"
+                } else if (jsonResponse.has("id")) {
                     userId = jsonResponse.get("id").asInt();
                 }
 
+                // 5. Čuvanje svih podataka i sertifikata u klijentsku sesiju
                 UserSession.getInstance().setUsername(username);
                 UserSession.getInstance().setToken(token);
                 UserSession.getInstance().setRole(role);
                 UserSession.getInstance().setUserId(userId);
+                UserSession.getInstance().setPrivateKey(privateKey);
+                UserSession.getInstance().setCertificate(cert);
 
-                // 3. Ako je izabran digitalni sertifikat, učitavamo ga u sesiju
-                if (selectedCertFile != null && selectedCertFile.exists()) {
-                    loadCertificateIntoSession(selectedCertFile, password);
-                }
-
-                // 4. Otvaranje Dashboard-a
+                // 6. Otvaranje Dashboard-a
                 Stage stage = (Stage) usernameField.getScene().getWindow();
                 Parent root = FXMLLoader.load(getClass().getResource("/fxml/dashboard.fxml"));
                 stage.setScene(new Scene(root, 800, 600));
@@ -99,7 +140,16 @@ public class LoginController {
                 stage.centerOnScreen();
 
             } else {
-                showError("Neispravno korisničko ime ili lozinka!");
+                // Izvlačenje tačne poruke greške sa bekenda (npr. "Priloženi sertifikat pripada korisniku...")
+                String serverMsg = "Neispravni podaci za prijavu ili sertifikat!";
+                try {
+                    JsonNode errJson = objectMapper.readTree(response.body());
+                    if (errJson.has("message")) {
+                        serverMsg = errJson.get("message").asText();
+                    }
+                } catch (Exception ignored) {}
+
+                showError(serverMsg);
             }
 
         } catch (Exception e) {
@@ -107,20 +157,14 @@ public class LoginController {
         }
     }
 
-    private void loadCertificateIntoSession(File certFile, String password) {
-        try (FileInputStream fis = new FileInputStream(certFile)) {
-            KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            keyStore.load(fis, password.toCharArray());
-
-            String alias = keyStore.aliases().nextElement();
-            PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, password.toCharArray());
-            X509Certificate cert = (X509Certificate) keyStore.getCertificate(alias);
-
-            UserSession.getInstance().setPrivateKey(privateKey);
-            UserSession.getInstance().setCertificate(cert);
-        } catch (Exception e) {
-            System.err.println("Upozorenje: Nije uspjelo učitavanje sertifikata: " + e.getMessage());
-        }
+    /**
+     * Pomoćna metoda za prevođenje X509Certificate u PEM string.
+     */
+    private String convertToPem(X509Certificate cert) throws Exception {
+        String base64Cert = Base64.getEncoder().encodeToString(cert.getEncoded());
+        return "-----BEGIN CERTIFICATE-----\n" +
+                base64Cert.replaceAll("(.{64})", "$1\n") +
+                "\n-----END CERTIFICATE-----";
     }
 
     @FXML

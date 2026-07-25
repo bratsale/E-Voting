@@ -12,6 +12,15 @@ import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.springframework.stereotype.Service;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.Mac;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.security.KeyFactory;
+
 import java.io.*;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -26,11 +35,74 @@ import java.util.Date;
 public class CryptoService {
 
   private static final String PKI_PATH = "pki"; // Putanja do tvog pki foldera
+  private static final String HMAC_SECRET = "MojSuperTajniHmacKljucZaMetapodatke123!"; // U produkciji iz application.properties
+
 
   static {
     if (Security.getProvider("BC") == null) {
       Security.addProvider(new BouncyCastleProvider());
     }
+  }
+
+
+  /**
+   * 1. Generiše nasumični AES-256 simetrični ključ
+   */
+  public SecretKey generateAESKey() throws Exception {
+    KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+    keyGen.init(256);
+    return keyGen.generateKey();
+  }
+
+  /**
+   * 2. Enkriptuje glas simetričnim AES ključem (AES/GCM/NoPadding)
+   */
+  public byte[] encryptVoteWithAES(String voteContent, SecretKey aesKey, byte[] iv) throws Exception {
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", "BC");
+    GCMParameterSpec spec = new GCMParameterSpec(128, iv);
+    cipher.init(Cipher.ENCRYPT_MODE, aesKey, spec);
+    return cipher.doFinal(voteContent.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * 3. Enkriptuje AES simetrični ključ sa RSA javnim ključem Organizatora
+   */
+  public byte[] encryptAESKeyWithOrganizerPublicKey(SecretKey aesKey, PublicKey organizerPublicKey) throws Exception {
+    Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding", "BC");
+    cipher.init(Cipher.ENCRYPT_MODE, organizerPublicKey);
+    return cipher.doFinal(aesKey.getEncoded());
+  }
+
+  /**
+   * 4. Izračunava HMAC-SHA256 za metapodatke glasanja radi očuvanja integriteta
+   */
+  public String calculateMetadataHMAC(String metadataData) throws Exception {
+    Mac sha256HMAC = Mac.getInstance("HmacSHA256");
+    SecretKeySpec secretKey = new SecretKeySpec(HMAC_SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+    sha256HMAC.init(secretKey);
+    byte[] hmacBytes = sha256HMAC.doFinal(metadataData.getBytes(StandardCharsets.UTF_8));
+    return Base64.getEncoder().encodeToString(hmacBytes);
+  }
+
+  /**
+   * 5. Dešifruje AES ključ sa RSA privatnim ključem Organizatora (Prilikom brojanja glasova)
+   */
+  public SecretKey decryptAESKeyWithOrganizerPrivateKey(byte[] encryptedAesKey, PrivateKey organizerPrivateKey) throws Exception {
+    Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding", "BC");
+    cipher.init(Cipher.DECRYPT_MODE, organizerPrivateKey);
+    byte[] decryptedKeyBytes = cipher.doFinal(encryptedAesKey);
+    return new SecretKeySpec(decryptedKeyBytes, "AES");
+  }
+
+  /**
+   * 6. Dešifruje sam glas sa dešifrovanim AES ključem
+   */
+  public String decryptVoteWithAES(byte[] encryptedVote, SecretKey aesKey, byte[] iv) throws Exception {
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", "BC");
+    GCMParameterSpec spec = new GCMParameterSpec(128, iv);
+    cipher.init(Cipher.DECRYPT_MODE, aesKey, spec);
+    byte[] decryptedBytes = cipher.doFinal(encryptedVote);
+    return new String(decryptedBytes, StandardCharsets.UTF_8);
   }
 
   /**
@@ -192,5 +264,81 @@ public class CryptoService {
     } catch (Exception e) {
       return false;
     }
+  }
+
+  public void validateUserCertificate(String certificatePem, String expectedUsername, String roleStr) throws Exception {
+    if (certificatePem == null || certificatePem.isBlank()) {
+      throw new IllegalArgumentException("Digitalni sertifikat je obavezan za prijavu.");
+    }
+
+    // 1. Konvertuj PEM u X509Certificate
+    X509Certificate userCert = convertPemToCertificate(certificatePem);
+
+    // 2. Provjeri vremensku važenost (da nije istekao)
+    userCert.checkValidity();
+
+    // 3. Učitaj odgovarajući CA sertifikat
+    Path pkiPath = Paths.get("pki");
+    if (!Files.exists(pkiPath)) {
+      pkiPath = Paths.get("evoting-backend", "pki");
+    }
+
+    boolean isOrganizer = "ORGANIZER".equalsIgnoreCase(roleStr);
+    String caDir = isOrganizer ? "organizacioni-ca" : "glasacki-ca";
+    String caFileName = isOrganizer ? "organizacioni" : "glasacki";
+    Path caCertPath = pkiPath.resolve(caDir).resolve(caFileName + ".crt");
+
+    X509Certificate caCert = loadCertificateFromPemFile(caCertPath.toFile());
+
+    // 4. Verifikuj da je sertifikatista potpisan od našeg CA
+    userCert.verify(caCert.getPublicKey());
+
+    // 5. STROGA PROVJERA IDENTITY-ja: Ekstrakcija CN-a iz sertifikata i poređenje sa username-om
+    String dn = userCert.getSubjectX500Principal().getName();
+    String certUsername = extractCNFromDN(dn);
+
+    if (!expectedUsername.equalsIgnoreCase(certUsername)) {
+      throw new SecurityException("Priloženi sertifikat pripada korisniku '" + certUsername + "', a ne '" + expectedUsername + "'.");
+    }
+  }
+
+  private String extractCNFromDN(String dn) {
+    for (String part : dn.split(",")) {
+      part = part.trim();
+      if (part.toUpperCase().startsWith("CN=")) {
+        return part.substring(3);
+      }
+    }
+    return "";
+  }
+
+  /**
+   * Konvertuje PEM String privatnog ključa u PrivateKey objekat
+   */
+  public PrivateKey convertPemToPrivateKey(String privateKeyPem) throws Exception {
+    try (Reader reader = new StringReader(privateKeyPem);
+         PEMParser pemParser = new PEMParser(reader)) {
+      Object object = pemParser.readObject();
+      JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
+
+      if (object instanceof org.bouncycastle.openssl.PEMKeyPair) {
+        return converter.getKeyPair((org.bouncycastle.openssl.PEMKeyPair) object).getPrivate();
+      } else if (object instanceof org.bouncycastle.asn1.pkcs.PrivateKeyInfo) {
+        return converter.getPrivateKey((org.bouncycastle.asn1.pkcs.PrivateKeyInfo) object);
+      }
+
+      throw new IllegalArgumentException("Nepoznat format privatnog ključa u pruženo stringu.");
+    }
+  }
+
+  /**
+   * Učitava privatni ključ direktno iz .p12 fajla preko lozinke
+   */
+  public PrivateKey loadPrivateKeyFromP12(File p12File, String alias, String password) throws Exception {
+    KeyStore keyStore = KeyStore.getInstance("PKCS12", "BC");
+    try (FileInputStream fis = new FileInputStream(p12File)) {
+      keyStore.load(fis, password.toCharArray());
+    }
+    return (PrivateKey) keyStore.getKey(alias, password.toCharArray());
   }
 }

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox spacing="15.0" alignment="CENTER" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.etf.evoting.client.controller.TallyDialogController"
+      prefWidth="500.0" style="-fx-padding: 20;">
+
+    <Label fx:id="electionTitleLabel" text="Prebrojavanje Glasova" style="-fx-font-weight: bold;">
+        <font>
+            <Font size="18.0" />
+        </font>
+    </Label>
+
+    <Label text="Za dešifrovanje glasova potreban je privatni ključ organizatora iz .p12 fajla." wrapText="true" textAlignment="CENTER" />
+
+    <Button text="Odaberi .p12 i Dekriptuj Rezultate" onAction="#handleTallyVotes"
+            style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 15;" />
+
+    <Separator prefWidth="200.0" />
+
+    <Label fx:id="totalVotesLabel" text="Ukupno prebrojano glasova: -" style="-fx-font-weight: bold;" />
+
+    <ListView fx:id="resultsListView" prefHeight="200.0" prefWidth="450.0" />
+
+    <Label fx:id="statusLabel" wrapText="true" />
+</VBox>
