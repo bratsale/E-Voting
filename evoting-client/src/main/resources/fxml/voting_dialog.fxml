@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox spacing="15.0" alignment="CENTER_LEFT" xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="org.etf.evoting.client.controller.VotingDialogController"
+      prefWidth="400.0" prefHeight="300.0">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label fx:id="electionTitleLabel" text="Naziv glasanja" wrapText="true">
+        <font>
+            <Font name="System Bold" size="18.0" />
+        </font>
+    </Label>
+
+    <Label fx:id="electionDescriptionLabel" text="Opis glasanja..." wrapText="true" textFill="#555555" />
+
+    <!-- Dinamički kontejner za opcije -->
+    <VBox fx:id="optionsContainer" spacing="10.0" style="-fx-border-color: #cccccc; -fx-border-radius: 5; -fx-padding: 10;" />
+
+    <Label fx:id="statusLabel" textFill="RED" />
+
+    <HBox spacing="10.0" alignment="CENTER_RIGHT">
+        <Button text="Odustani" onAction="#handleCancel" />
+        <Button text="Potvrdi glas" onAction="#handleSubmitVote" style="-fx-background-color: #2E7D32; -fx-text-fill: white;" />
+    </HBox>
+</VBox>

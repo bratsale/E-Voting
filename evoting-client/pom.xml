@@ -48,6 +48,12 @@
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>2.15.4</version> <!-- ili verziju koja odgovara tvom jackson-databind-u -->
+        </dependency>
     </dependencies>
 
     <build>

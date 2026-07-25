@@ -3,5 +3,7 @@
 /home/sasa/Documents/GitHub/E-Voting/evoting-client/src/main/java/org/etf/evoting/client/controller/DashboardController.java
 /home/sasa/Documents/GitHub/E-Voting/evoting-client/src/main/java/org/etf/evoting/client/controller/LoginController.java
 /home/sasa/Documents/GitHub/E-Voting/evoting-client/src/main/java/org/etf/evoting/client/controller/RegisterController.java
+/home/sasa/Documents/GitHub/E-Voting/evoting-client/src/main/java/org/etf/evoting/client/controller/VotingDialogController.java
 /home/sasa/Documents/GitHub/E-Voting/evoting-client/src/main/java/org/etf/evoting/client/model/ElectionDTO.java
+/home/sasa/Documents/GitHub/E-Voting/evoting-client/src/main/java/org/etf/evoting/client/model/ElectionOptionDTO.java
 /home/sasa/Documents/GitHub/E-Voting/evoting-client/src/main/java/org/etf/evoting/client/model/UserSession.java

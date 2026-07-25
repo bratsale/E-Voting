@@ -3,6 +3,7 @@ package org.etf.evoting.client.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.collections.FXCollections;
+import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -14,6 +15,8 @@ import javafx.stage.Stage;
 import javafx.util.Callback;
 import org.etf.evoting.client.model.ElectionDTO;
 import org.etf.evoting.client.model.UserSession;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -32,7 +35,15 @@ public class DashboardController {
     @FXML private Button createElectionButton;
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
+
+    public DashboardController() {
+        this.objectMapper = new ObjectMapper();
+        this.objectMapper.registerModule(new JavaTimeModule());
+        this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    }
+
+
 
     @FXML
     public void initialize() {
@@ -99,30 +110,64 @@ public class DashboardController {
 
     private void loadActiveElections() {
         try {
+            String token = UserSession.getInstance().getToken();
+
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("http://localhost:8080/api/elections/active"))
+                    .header("Authorization", "Bearer " + token)
                     .GET()
                     .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenApply(HttpResponse::body)
+                    .thenAccept(json -> {
+                        try {
+                            // Deserijalizacija u listu ElectionDTO objekata
+                            List<ElectionDTO> elections = objectMapper.readValue(
+                                    json,
+                                    objectMapper.getTypeFactory().constructCollectionType(List.class, ElectionDTO.class)
+                            );
 
-            if (response.statusCode() == 200) {
-                List<ElectionDTO> elections = objectMapper.readValue(
-                        response.body(),
-                        new TypeReference<List<ElectionDTO>>() {}
-                );
+                            // Ažuriranje UI-ja na JavaFX Application Thread-u
+                            Platform.runLater(() -> {
+                                electionsTable.setItems(FXCollections.observableArrayList(elections));
+                            });
+                        } catch (Exception e) {
+                            System.err.println("Greška pri parsiranju izbora: " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                    })
+                    .exceptionally(ex -> {
+                        System.err.println("Greška u mrežnom zahtjevu: " + ex.getMessage());
+                        ex.printStackTrace();
+                        return null;
+                    });
 
-                ObservableList<ElectionDTO> observableList = FXCollections.observableArrayList(elections);
-                electionsTable.setItems(observableList);
-            }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     private void handleOpenVotingScreen(ElectionDTO election) {
-        System.out.println("Otvaram glasanje za izbor sa ID-jem: " + election.getId());
-        // Ovde ide prelazak na prozor za glasanje sa ponuđenim kandidatima/opcijama
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/voting_dialog.fxml"));
+            Parent root = loader.load();
+
+            VotingDialogController controller = loader.getController();
+            controller.setElectionData(election);
+
+            // Nakon glasanja osvježi listu glasanja na dashboardu
+            controller.setOnVoteSubmittedCallback(this::loadActiveElections);
+
+            Stage stage = new Stage();
+            stage.setTitle("Glasanje: " + election.getTitle());
+            stage.setScene(new Scene(root));
+            stage.show();
+
+        } catch (Exception e) {
+            System.err.println("Greška pri otvaranju prozora za glasanje: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @FXML
