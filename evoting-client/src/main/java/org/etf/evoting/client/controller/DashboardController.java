@@ -1,10 +1,10 @@
 package org.etf.evoting.client.controller;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import javafx.collections.FXCollections;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import javafx.application.Platform;
-import javafx.collections.ObservableList;
+import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -15,8 +15,6 @@ import javafx.stage.Stage;
 import javafx.util.Callback;
 import org.etf.evoting.client.model.ElectionDTO;
 import org.etf.evoting.client.model.UserSession;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.fasterxml.jackson.databind.SerializationFeature;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -27,11 +25,22 @@ import java.util.List;
 public class DashboardController {
 
     @FXML private Label userInfoLabel;
+    @FXML private TabPane mainTabPane;
+    @FXML private Tab activeTab;
+    @FXML private Tab finishedTab;
 
-    @FXML private TableView<ElectionDTO> electionsTable;
-    @FXML private TableColumn<ElectionDTO, String> titleColumn;
-    @FXML private TableColumn<ElectionDTO, String> statusColumn;
-    @FXML private TableColumn<ElectionDTO, Void> actionColumn;
+    // Tabela za aktivna glasanja
+    @FXML private TableView<ElectionDTO> activeElectionsTable;
+    @FXML private TableColumn<ElectionDTO, String> activeTitleColumn;
+    @FXML private TableColumn<ElectionDTO, String> activeStatusColumn;
+    @FXML private TableColumn<ElectionDTO, Void> activeActionColumn;
+
+    // Tabela za završena glasanja
+    @FXML private TableView<ElectionDTO> finishedElectionsTable;
+    @FXML private TableColumn<ElectionDTO, String> finishedTitleColumn;
+    @FXML private TableColumn<ElectionDTO, String> finishedStatusColumn;
+    @FXML private TableColumn<ElectionDTO, Void> finishedActionColumn;
+
     @FXML private Button createElectionButton;
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
@@ -43,46 +52,84 @@ public class DashboardController {
         this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
-
-
     @FXML
     public void initialize() {
         String username = UserSession.getInstance().getUsername();
-        String role = UserSession.getInstance().getRole(); // Uvjeri se da čuvaš ulogu u UserSession pri loginu
+        String role = UserSession.getInstance().getRole();
 
         userInfoLabel.setText("Prijavljeni ste kao: " + username + " (" + role + ")");
 
-        // Prikaži dugme za kreiranje samo ako je uloga ORGANIZER
-        if ("ORGANIZER".equals(role)) {
+        if ("ORGANIZER".equalsIgnoreCase(role)) {
             createElectionButton.setVisible(true);
         }
 
-        titleColumn.setCellValueFactory(new PropertyValueFactory<>("title"));
-        statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
+        // Podešavanje kolona za aktivnu tabelu
+        activeTitleColumn.setCellValueFactory(new PropertyValueFactory<>("title"));
+        activeStatusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
+        setupActionColumn(activeActionColumn, true);
 
-        setupActionColumn();
+        // Podešavanje kolona za završenu tabelu
+        finishedTitleColumn.setCellValueFactory(new PropertyValueFactory<>("title"));
+        finishedStatusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
+        setupActionColumn(finishedActionColumn, false);
+
+        // Event pri zamjeni taba
+        mainTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+            if (newTab == activeTab) {
+                loadActiveElections();
+            } else if (newTab == finishedTab) {
+                loadFinishedElections();
+            }
+        });
+
+        // Učitaj početne podatke
         loadActiveElections();
     }
 
-    @FXML
-    private void handleOpenCreateElectionModal() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/create_election.fxml"));
-            Parent root = loader.load();
-
-            CreateElectionController controller = loader.getController();
-            // Kada se glasanje kreira, osvježi tabelu automatski!
-            controller.setOnElectionCreatedCallback(this::loadActiveElections);
-
-            Stage stage = new Stage();
-            stage.setTitle("Kreiraj Novo Glasanje");
-            stage.setScene(new Scene(root));
-            stage.show();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    public void loadActiveElections() {
+        fetchElections("http://localhost:8080/api/elections/active", activeElectionsTable);
     }
-    private void setupActionColumn() {
+
+    public void loadFinishedElections() {
+        fetchElections("http://localhost:8080/api/elections/finished", finishedElectionsTable);
+    }
+
+    private void fetchElections(String endpointUrl, TableView<ElectionDTO> targetTable) {
+        String token = UserSession.getInstance().getToken();
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(endpointUrl))
+                .header("Authorization", "Bearer " + token)
+                .GET()
+                .build();
+
+        httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenAccept(response -> {
+                    Platform.runLater(() -> {
+                        if (response.statusCode() != 200 || response.body() == null || response.body().isBlank()) {
+                            targetTable.setItems(FXCollections.observableArrayList());
+                            return;
+                        }
+
+                        try {
+                            List<ElectionDTO> elections = objectMapper.readValue(
+                                    response.body(),
+                                    objectMapper.getTypeFactory().constructCollectionType(List.class, ElectionDTO.class)
+                            );
+                            targetTable.setItems(FXCollections.observableArrayList(elections));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            targetTable.setItems(FXCollections.observableArrayList());
+                        }
+                    });
+                })
+                .exceptionally(ex -> {
+                    ex.printStackTrace();
+                    return null;
+                });
+    }
+
+    private void setupActionColumn(TableColumn<ElectionDTO, Void> column, boolean isActiveTab) {
         String role = UserSession.getInstance().getRole();
 
         Callback<TableColumn<ElectionDTO, Void>, TableCell<ElectionDTO, Void>> cellFactory = param -> new TableCell<>() {
@@ -120,98 +167,89 @@ public class DashboardController {
                     ElectionDTO election = getTableView().getItems().get(getIndex());
 
                     if ("ORGANIZER".equalsIgnoreCase(role)) {
-                        if ("ACTIVE".equalsIgnoreCase(election.getStatus())) {
+                        if (isActiveTab && "ACTIVE".equalsIgnoreCase(election.getStatus())) {
                             setGraphic(finishButton);
                         } else {
                             setGraphic(resultsButton);
                         }
                     } else {
-                        // Za VOTER ulogu prikazujemo dugme za glasanje
-                        setGraphic(voteButton);
+                        if (isActiveTab) {
+                            setGraphic(voteButton);
+                        } else {
+                            setGraphic(resultsButton);
+                        }
                     }
                 }
             }
         };
 
-        actionColumn.setCellFactory(cellFactory);
+        column.setCellFactory(cellFactory);
     }
 
     private void handleFinishElection(ElectionDTO election) {
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                "Da li ste sigurni da želite završiti glasanje: " + election.getTitle() + "?",
-                ButtonType.YES, ButtonType.NO);
+        String token = UserSession.getInstance().getToken();
 
-        confirm.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.YES) {
-                try {
-                    String token = UserSession.getInstance().getToken();
-                    HttpRequest request = HttpRequest.newBuilder()
-                            .uri(URI.create("http://localhost:8080/api/elections/" + election.getId() + "/finish"))
-                            .header("Authorization", "Bearer " + token)
-                            .POST(HttpRequest.BodyPublishers.noBody())
-                            .build();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8080/api/elections/" + election.getId() + "/finish"))
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
 
-                    httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                            .thenAccept(res -> {
-                                Platform.runLater(() -> {
-                                    if (res.statusCode() == 200) {
-                                        Alert alert = new Alert(Alert.AlertType.INFORMATION, "Glasanje je uspješno završeno!");
-                                        alert.show();
-                                        loadActiveElections(); // Osvježi tabelu
-                                    } else {
-                                        Alert alert = new Alert(Alert.AlertType.ERROR, "Greška pri zatvaranju glasanja: " + res.body());
-                                        alert.show();
-                                    }
-                                });
-                            });
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        });
+        httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenAccept(response -> {
+                    Platform.runLater(() -> {
+                        if (response.statusCode() == 200) {
+                            loadActiveElections();
+                            handleShowResults(election);
+                        } else {
+                            showErrorAlert("Greška", "Nije moguće završiti glasanje: " + response.body());
+                        }
+                    });
+                });
     }
 
     private void handleShowResults(ElectionDTO election) {
-        // Ovdje otvaraš prozor ili dijalog za pregled rezultata
-        Alert alert = new Alert(Alert.AlertType.INFORMATION, "Otvaranje rezultata za glasanje: " + election.getTitle());
-        alert.show();
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/results_view.fxml"));
+            Parent root = loader.load();
+
+            ResultsController controller = loader.getController();
+            String token = UserSession.getInstance().getToken();
+            controller.setElectionData(election.getId(), token);
+
+            Stage stage = new Stage();
+            stage.setTitle("Rezultati izbora: " + election.getTitle());
+            stage.setScene(new Scene(root));
+            stage.show();
+
+        } catch (Exception e) {
+            System.err.println("Greška pri otvaranju prozora za rezultate: " + e.getMessage());
+            e.printStackTrace();
+            showErrorAlert("Greška", "Nije moguće otvoriti prozor sa rezultatima: " + e.getMessage());
+        }
     }
 
-    private void loadActiveElections() {
+    private void showErrorAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    @FXML
+    private void handleOpenCreateElectionModal() {
         try {
-            String token = UserSession.getInstance().getToken();
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/create_election.fxml"));
+            Parent root = loader.load();
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/elections/active"))
-                    .header("Authorization", "Bearer " + token)
-                    .GET()
-                    .build();
+            CreateElectionController controller = loader.getController();
+            controller.setOnElectionCreatedCallback(this::loadActiveElections);
 
-            httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenApply(HttpResponse::body)
-                    .thenAccept(json -> {
-                        try {
-                            // Deserijalizacija u listu ElectionDTO objekata
-                            List<ElectionDTO> elections = objectMapper.readValue(
-                                    json,
-                                    objectMapper.getTypeFactory().constructCollectionType(List.class, ElectionDTO.class)
-                            );
-
-                            // Ažuriranje UI-ja na JavaFX Application Thread-u
-                            Platform.runLater(() -> {
-                                electionsTable.setItems(FXCollections.observableArrayList(elections));
-                            });
-                        } catch (Exception e) {
-                            System.err.println("Greška pri parsiranju izbora: " + e.getMessage());
-                            e.printStackTrace();
-                        }
-                    })
-                    .exceptionally(ex -> {
-                        System.err.println("Greška u mrežnom zahtjevu: " + ex.getMessage());
-                        ex.printStackTrace();
-                        return null;
-                    });
-
+            Stage stage = new Stage();
+            stage.setTitle("Kreiraj Novo Glasanje");
+            stage.setScene(new Scene(root));
+            stage.show();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -224,8 +262,6 @@ public class DashboardController {
 
             VotingDialogController controller = loader.getController();
             controller.setElectionData(election);
-
-            // Nakon glasanja osvježi listu glasanja na dashboardu
             controller.setOnVoteSubmittedCallback(this::loadActiveElections);
 
             Stage stage = new Stage();

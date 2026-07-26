@@ -1,4 +1,4 @@
-package org.etf.evoting.model;
+package org.etf.evoting.client.model;
 
 import java.util.Map;
 
@@ -8,10 +8,9 @@ public class ElectionResultDTO {
     private String electionTitle;
     private long totalVotes;
     private Map<String, Long> voteCounts; // Naziv opcije -> Broj glasova
-    private String reportContent;          // Tekstualni sadržaj izvještaja
-    private String reportSignatureBase64;  // Digitalni potpis izvještaja
+    private String reportContent;
+    private String reportSignatureBase64;
 
-    // Prazan konstruktor (potreban Jacksonu za serijalizaciju/deserijalizaciju)
     public ElectionResultDTO() {}
 
     public ElectionResultDTO(Integer electionId, String electionTitle, long totalVotes, Map<String, Long> voteCounts) {
@@ -31,7 +30,7 @@ public class ElectionResultDTO {
         this.reportSignatureBase64 = reportSignatureBase64;
     }
 
-    // Getters i Setters
+    // Getteri i Setteri
     public Integer getElectionId() { return electionId; }
     public void setElectionId(Integer electionId) { this.electionId = electionId; }
 

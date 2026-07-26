@@ -8,6 +8,8 @@ org/etf/evoting/client/controller/VerificationDialogController.class
 org/etf/evoting/client/util/KeyStoreHelper.class
 org/etf/evoting/client/controller/TallyDialogController.class
 org/etf/evoting/client/controller/DashboardController$1.class
+org/etf/evoting/client/controller/ResultsController.class
 org/etf/evoting/client/controller/VotingDialogController.class
 org/etf/evoting/client/model/ElectionDTO.class
 org/etf/evoting/client/model/ElectionOptionDTO.class
+org/etf/evoting/client/model/ElectionResultDTO.class

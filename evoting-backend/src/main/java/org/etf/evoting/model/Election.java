@@ -34,6 +34,10 @@ public class Election {
   @Column(name = "created_at", insertable = false, updatable = false)
   private LocalDateTime createdAt;
 
+  // Novo polje za sertifikat specifičan za ove izbore
+  @Column(name = "certificate_pem", columnDefinition = "TEXT")
+  private String certificatePem;
+
   // Konstruktori
   public Election() {
   }
@@ -109,5 +113,13 @@ public class Election {
 
   public void setCreatedAt(LocalDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public String getCertificatePem() {
+    return certificatePem;
+  }
+
+  public void setCertificatePem(String certificatePem) {
+    this.certificatePem = certificatePem;
   }
 }

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefHeight="600.0" prefWidth="700.0" spacing="15.0" style="-fx-padding: 20;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.etf.evoting.client.controller.ResultsController">
+    <children>
+        <Label fx:id="titleLabel" text="Rezultati Izbora" style="-fx-font-weight: bold;">
+            <font>
+                <Font size="20.0" />
+            </font>
+        </Label>
+
+        <Label fx:id="totalVotesLabel" text="Ukupno glasova: 0">
+            <font>
+                <Font size="14.0" />
+            </font>
+        </Label>
+
+        <HBox alignment="CENTER_LEFT" spacing="10.0">
+            <children>
+                <Button mnemonicParsing="false" onAction="#handleLoadPrivateKeyAndFetchResults" text="Učitaj ključ i prikaži rezultate" style="-fx-font-weight: bold;" />
+            </children>
+        </HBox>
+
+        <HBox prefHeight="350.0" prefWidth="660.0" spacing="15.0" VBox.vgrow="ALWAYS">
+            <children>
+                <PieChart fx:id="resultsPieChart" title="Distribucija glasova" HBox.hgrow="ALWAYS" />
+                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                    <children>
+                        <Label text="Tekstualni izvještaj i potpis:" style="-fx-font-weight: bold;" />
+                        <TextArea fx:id="reportTextArea" editable="false" prefHeight="300.0" wrapText="true" VBox.vgrow="ALWAYS" />
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+
+        <Label fx:id="statusLabel" text="Status: Čeka se učitavanje privatnog ključa..." textFill="#555555">
+            <font>
+                <Font size="13.0" />
+            </font>
+        </Label>
+    </children>
+</VBox>

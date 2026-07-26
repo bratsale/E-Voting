@@ -1,8 +1,11 @@
 package org.etf.evoting.client.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ElectionDTO {
     private Integer id;
     private String title;
@@ -13,6 +16,7 @@ public class ElectionDTO {
     private Integer organizerId;
     private String organizerUsername;
     private List<ElectionOptionDTO> options;
+    private String publicKey;
 
     public ElectionDTO() {}
 
@@ -29,6 +33,15 @@ public class ElectionDTO {
         this.organizerId = organizerId;
         this.organizerUsername = organizerUsername;
         this.options = options;
+    }
+
+    // Konstruktor sa publicKey (opciono, ako ti zatreba na klijentu)
+    public ElectionDTO(Integer id, String title, String description, String status,
+                       LocalDateTime startDate, LocalDateTime endDate,
+                       Integer organizerId, String organizerUsername,
+                       List<ElectionOptionDTO> options, String publicKey) {
+        this(id, title, description, status, startDate, endDate, organizerId, organizerUsername, options);
+        this.publicKey = publicKey;
     }
 
     // Geteri i Seteri
@@ -58,4 +71,7 @@ public class ElectionDTO {
 
     public List<ElectionOptionDTO> getOptions() { return options; }
     public void setOptions(List<ElectionOptionDTO> options) { this.options = options; }
+
+    public String getPublicKey() { return publicKey; }
+    public void setPublicKey(String publicKey) { this.publicKey = publicKey; }
 }

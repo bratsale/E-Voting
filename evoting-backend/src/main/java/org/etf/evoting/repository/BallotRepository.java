@@ -5,11 +5,14 @@ import org.etf.evoting.model.Election;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BallotRepository extends JpaRepository<Ballot, Integer> {
 
   // Povlačenje svih listića za određene izbore radi brojanja/verifikacije
   List<Ballot> findByElection(Election election);
+
+  Optional<Ballot> findByReceiptCode(String receiptCode);
 
 }

@@ -29,7 +29,8 @@ public class ElectionService {
 
   @Transactional
   public Election createElection(String title, String description, LocalDateTime startDate,
-                                 LocalDateTime endDate, User organizer, List<String> options) {
+                                 LocalDateTime endDate, User organizer, List<String> options,
+                                 String publicKey) {
 
     Election election = new Election();
     election.setTitle(title);
@@ -38,6 +39,19 @@ public class ElectionService {
     election.setEndDate(endDate);
     election.setOrganizer(organizer);
     election.setStatus(ElectionStatus.ACTIVE);
+
+    // Ako je proslijeđen javni ključ sa klijenta, pretvaramo ga u PEM i sačuvamo u bazu
+    if (publicKey != null && !publicKey.trim().isEmpty()) {
+      String pemPublicKey;
+      if (publicKey.contains("-----BEGIN PUBLIC KEY-----")) {
+        pemPublicKey = publicKey;
+      } else {
+        pemPublicKey = "-----BEGIN PUBLIC KEY-----\n"
+                + publicKey.replaceAll("(.{64})", "$1\n")
+                + "\n-----END PUBLIC KEY-----";
+      }
+      election.setCertificatePem(pemPublicKey);
+    }
 
     Election savedElection = electionRepository.save(election);
 
@@ -84,6 +98,13 @@ public class ElectionService {
             .toList();
   }
 
+  public List<ElectionDTO> getFinishedElections() {
+    List<Election> elections = electionRepository.findByStatus(ElectionStatus.FINISHED);
+    return elections.stream()
+            .map(this::mapToDTO)
+            .toList();
+  }
+
   /**
    * Osnovne informacije o glasovima (ukupan broj pristiglih listića).
    * Zvanično brojanje po opcijama se vrši u VotingService uz privatni ključ.
@@ -124,7 +145,10 @@ public class ElectionService {
             election.getEndDate(),
             election.getOrganizer() != null ? election.getOrganizer().getId() : null,
             election.getOrganizer() != null ? election.getOrganizer().getUsername() : null,
-            optionDTOs
+            optionDTOs,
+            election.getCertificatePem() // <-- Dodat 10. argument
     );
   }
 }
+
+

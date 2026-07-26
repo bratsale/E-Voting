@@ -12,5 +12,6 @@ public record ElectionDTO(
         LocalDateTime endDate,
         Integer organizerId,
         String organizerUsername,
-        List<ElectionOptionDTO> options // Dodata komponenta
+        List<ElectionOptionDTO> options, // Dodata komponenta
+        String publicKey
 ) {}

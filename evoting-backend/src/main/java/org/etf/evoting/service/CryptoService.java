@@ -68,7 +68,7 @@ public class CryptoService {
    * 3. Enkriptuje AES simetrični ključ sa RSA javnim ključem Organizatora
    */
   public byte[] encryptAESKeyWithOrganizerPublicKey(SecretKey aesKey, PublicKey organizerPublicKey) throws Exception {
-    Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding", "BC");
+    Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding", "BC");
     cipher.init(Cipher.ENCRYPT_MODE, organizerPublicKey);
     return cipher.doFinal(aesKey.getEncoded());
   }
@@ -88,7 +88,7 @@ public class CryptoService {
    * 5. Dešifruje AES ključ sa RSA privatnim ključem Organizatora (Prilikom brojanja glasova)
    */
   public SecretKey decryptAESKeyWithOrganizerPrivateKey(byte[] encryptedAesKey, PrivateKey organizerPrivateKey) throws Exception {
-    Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding", "BC");
+    Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding", "BC");
     cipher.init(Cipher.DECRYPT_MODE, organizerPrivateKey);
     byte[] decryptedKeyBytes = cipher.doFinal(encryptedAesKey);
     return new SecretKeySpec(decryptedKeyBytes, "AES");
@@ -329,6 +329,21 @@ public class CryptoService {
 
       throw new IllegalArgumentException("Nepoznat format privatnog ključa u pruženo stringu.");
     }
+  }
+
+  /**
+   * Konvertuje PEM String javnog ključa u PublicKey objekat
+   */
+  public PublicKey convertPemToPublicKey(String publicKeyPem) throws Exception {
+    String cleanPem = publicKeyPem
+            .replace("-----BEGIN PUBLIC KEY-----", "")
+            .replace("-----END PUBLIC KEY-----", "")
+            .replaceAll("\\s+", "");
+
+    byte[] decoded = Base64.getDecoder().decode(cleanPem);
+    X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decoded);
+    KeyFactory keyFactory = KeyFactory.getInstance("RSA", "BC");
+    return keyFactory.generatePublic(keySpec);
   }
 
   /**

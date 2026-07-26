@@ -1,9 +1,11 @@
 package org.etf.evoting.controller;
 
+import org.etf.evoting.model.ElectionResultDTO;
 import org.etf.evoting.service.CryptoService;
 import org.etf.evoting.service.VotingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.security.PrivateKey;
 import java.util.Map;
@@ -59,30 +61,18 @@ public class VotingController {
    * 2. Provera da li je korisnik već glasao
    */
   @GetMapping("/has-voted")
-  public ResponseEntity<?> hasVoted(@RequestParam Integer userId, @RequestParam Integer electionId) {
+  public ResponseEntity<?> hasVoted(
+          @RequestParam("userId") Integer userId,
+          @RequestParam("electionId") Integer electionId) {
     boolean voted = votingService.hasUserVoted(userId, electionId);
     return ResponseEntity.ok(Map.of("hasVoted", voted));
   }
 
   /**
-   * 3. Brojanje glasova (Izvršava organizator)
-   */
-  @PostMapping("/tally/{electionId}")
-  public ResponseEntity<?> tallyVotes(@PathVariable Integer electionId, @RequestBody TallyRequest request) {
-    try {
-      PrivateKey organizerPrivateKey = cryptoService.convertPemToPrivateKey(request.privateKeyPem);
-      Map<Integer, Long> results = votingService.tallyVotes(electionId, organizerPrivateKey);
-      return ResponseEntity.ok(results);
-    } catch (Exception e) {
-      return ResponseEntity.internalServerError().body(Map.of("message", "Greška pri brojanju glasova: " + e.getMessage()));
-    }
-  }
-
-  /**
-   * 4. Verifikacija glasa od strane glasača
+   * 3. Verifikacija glasa od strane glasača
    */
   @GetMapping("/verify/{receiptCode}")
-  public ResponseEntity<?> verifyVote(@PathVariable String receiptCode) {
+  public ResponseEntity<?> verifyVote(@PathVariable("receiptCode") String receiptCode) {
     try {
       boolean isValid = votingService.verifyVoteByReceiptCode(receiptCode);
       if (isValid) {
@@ -98,6 +88,47 @@ public class VotingController {
       }
     } catch (Exception e) {
       return ResponseEntity.internalServerError().body(Map.of("message", "Greška pri verifikaciji: " + e.getMessage()));
+    }
+  }
+
+  /**
+   * 4. Pokretanje brojanja glasova od strane ORGANIZER-a
+   * Organizator šalje svoj privatni ključ (u PEM formatu) u body-ju zahtjeva.
+   */
+  @PostMapping("/tally/{electionId}")
+  @PreAuthorize("hasRole('ORGANIZER')")
+  public ResponseEntity<?> tallyVotes(
+          @PathVariable("electionId") Integer electionId,
+          @RequestBody TallyRequest request) {
+    try {
+      // Konvertujemo PEM string u PrivateKey objekat
+      PrivateKey organizerPrivateKey = cryptoService.convertPemToPrivateKey(request.privateKeyPem);
+
+      // Dešifrujemo glasove, sabiramo i generišemo digitalno potpisan izvještaj
+      ElectionResultDTO result = votingService.tallyVotesAndGenerateReport(electionId, organizerPrivateKey);
+
+      return ResponseEntity.ok(result);
+    } catch (Exception e) {
+      return ResponseEntity.internalServerError()
+              .body(Map.of("message", "Greška pri brojanju glasova: " + e.getMessage()));
+    }
+  }
+
+  /**
+   * 5. Dohvatanje već izračunatih rezultata za bilo kog prijavljenog korisnika
+   */
+  @PostMapping("/results/{electionId}")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<?> getResults(
+          @PathVariable("electionId") Integer electionId,
+          @RequestBody TallyRequest request) {
+    try {
+      PrivateKey organizerPrivateKey = cryptoService.convertPemToPrivateKey(request.privateKeyPem);
+      ElectionResultDTO result = votingService.tallyVotesAndGenerateReport(electionId, organizerPrivateKey);
+      return ResponseEntity.ok(result);
+    } catch (Exception e) {
+      return ResponseEntity.internalServerError()
+              .body(Map.of("message", "Greška pri dohvatanju rezultata: " + e.getMessage()));
     }
   }
 }
