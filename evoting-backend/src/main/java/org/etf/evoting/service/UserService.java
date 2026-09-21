@@ -17,9 +17,6 @@ public class UserService {
     this.cryptoService = cryptoService;
   }
 
-  /**
-   * Registracija novog korisnika sa X.509 sertifikatom.
-   */
   public User registerUser(
           String username,
           String rawPassword,
@@ -57,12 +54,11 @@ public class UserService {
 
     if (certificatePem == null || certificatePem.isBlank()) {
       try {
-        // Generišemo sertifikat potpisan od CA i čuvamo .p12 u pki/korisnici/
         String roleStr = (role != null) ? role.name() : "VOTER";
         certificatePem = cryptoService.generateAndSaveUserCertificate(username, roleStr, rawPassword);
       } catch (Exception e) {
         System.err.println("❌ GREŠKA PRILIKOM GENERISANJA SERTIFIKATA U USER SERVICE:");
-        e.printStackTrace(); // Ispisuje tačnu liniju i izuzetak u terminalu backenda
+        e.printStackTrace();
         throw new RuntimeException("Greška pri generisanju sertifikata za korisnika: " + username + " -> " + e.getMessage(), e);
       }
     }
@@ -80,22 +76,15 @@ public class UserService {
     return userRepository.save(newUser);
   }
 
-  /**
-   * Autentifikacija korisnika (Login).
-   */
   public Optional<User> login(String username, String rawPassword) {
     return userRepository.findByUsername(username)
             .filter(user -> checkPassword(rawPassword, user.getPasswordHash()));
   }
 
-  /**
-   * Pronalaženje korisnika po ID-ju.
-   */
   public Optional<User> getUserById(Integer id) {
     return userRepository.findById(id);
   }
 
-  // Pomoćne metode za simulaciju/hash-ovanje lozinke
   private String fakeBCryptHash(String password) {
     return "{bcrypt}" + Integer.toHexString(password.hashCode());
   }

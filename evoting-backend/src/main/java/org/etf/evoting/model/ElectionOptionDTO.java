@@ -11,7 +11,6 @@ public class ElectionOptionDTO {
         this.electionId = electionId;
     }
 
-    // Getter-i i Setter-i...
     public Integer getId() { return id; }
     public String getOptionText() { return optionText; }
     public Integer getElectionId() { return electionId; }

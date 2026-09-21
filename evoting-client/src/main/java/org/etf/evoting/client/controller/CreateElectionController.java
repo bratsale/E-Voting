@@ -112,7 +112,6 @@ public class CreateElectionController {
             Files.writeString(privateKeyFile.toPath(), pemContent);
             System.out.println("Privatni ključ sačuvan u: " + privateKeyFile.getAbsolutePath());
 
-            // 3. Priprema JSON zahtjeva (uključujući javni ključ za backend)
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("title", title);
             requestBody.put("description", description);

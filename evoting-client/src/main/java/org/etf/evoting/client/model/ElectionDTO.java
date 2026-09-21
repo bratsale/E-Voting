@@ -35,7 +35,6 @@ public class ElectionDTO {
         this.options = options;
     }
 
-    // Konstruktor sa publicKey (opciono, ako ti zatreba na klijentu)
     public ElectionDTO(Integer id, String title, String description, String status,
                        LocalDateTime startDate, LocalDateTime endDate,
                        Integer organizerId, String organizerUsername,
@@ -44,7 +43,6 @@ public class ElectionDTO {
         this.publicKey = publicKey;
     }
 
-    // Geteri i Seteri
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
 

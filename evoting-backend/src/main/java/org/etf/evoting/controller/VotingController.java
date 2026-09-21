@@ -22,7 +22,6 @@ public class VotingController {
     this.cryptoService = cryptoService;
   }
 
-  // DTO klase za zahteve
   public static class CastVoteRequest {
     public Integer electionId;
     public Integer optionId;
@@ -31,7 +30,7 @@ public class VotingController {
   }
 
   public static class TallyRequest {
-    public String privateKeyPem; // Privatni ključ organizatora iz njegovog .p12 kontejnera
+    public String privateKeyPem;
   }
 
   /**
@@ -101,10 +100,8 @@ public class VotingController {
           @PathVariable("electionId") Integer electionId,
           @RequestBody TallyRequest request) {
     try {
-      // Konvertujemo PEM string u PrivateKey objekat
       PrivateKey organizerPrivateKey = cryptoService.convertPemToPrivateKey(request.privateKeyPem);
 
-      // Dešifrujemo glasove, sabiramo i generišemo digitalno potpisan izvještaj
       ElectionResultDTO result = votingService.tallyVotesAndGenerateReport(electionId, organizerPrivateKey);
 
       return ResponseEntity.ok(result);
@@ -114,21 +111,4 @@ public class VotingController {
     }
   }
 
-  /**
-   * 5. Dohvatanje već izračunatih rezultata za bilo kog prijavljenog korisnika
-   */
-  @PostMapping("/results/{electionId}")
-  @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<?> getResults(
-          @PathVariable("electionId") Integer electionId,
-          @RequestBody TallyRequest request) {
-    try {
-      PrivateKey organizerPrivateKey = cryptoService.convertPemToPrivateKey(request.privateKeyPem);
-      ElectionResultDTO result = votingService.tallyVotesAndGenerateReport(electionId, organizerPrivateKey);
-      return ResponseEntity.ok(result);
-    } catch (Exception e) {
-      return ResponseEntity.internalServerError()
-              .body(Map.of("message", "Greška pri dohvatanju rezultata: " + e.getMessage()));
-    }
-  }
 }

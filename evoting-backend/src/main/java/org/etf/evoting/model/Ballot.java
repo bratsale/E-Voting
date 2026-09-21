@@ -15,30 +15,24 @@ public class Ballot {
   @JoinColumn(name = "election_id", nullable = false)
   private Election election;
 
-  // Enkriptovan ID opcije (AES-GCM)
   @Column(name = "encrypted_vote", nullable = false, columnDefinition = "TEXT")
   private String encryptedVote;
 
-  // AES ključ enkriptovan RSA javnim ključem organizatora
   @Column(name = "encrypted_sym_key", nullable = false, columnDefinition = "TEXT")
   private String encryptedSymKey;
 
-  // Initialization Vector za AES/GCM
   @Column(name = "iv_base64", nullable = false)
   private String ivBase64;
 
-  // Digitalni potpis glasača
   @Column(name = "digital_signature", nullable = false, columnDefinition = "TEXT")
   private String digitalSignature;
 
-  // Nasumični kod koji se vraća glasaču za verifikaciju
   @Column(name = "receipt_code", nullable = false, unique = true)
   private String receiptCode;
 
   @Column(name = "created_at", insertable = false, updatable = false)
   private LocalDateTime createdAt;
 
-  // Konstruktori
   public Ballot() {
   }
 
@@ -52,7 +46,6 @@ public class Ballot {
     this.receiptCode = receiptCode;
   }
 
-  // Getteri i Setteri
   public Integer getId() {
     return id;
   }

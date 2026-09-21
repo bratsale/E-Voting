@@ -35,7 +35,6 @@ public class TallyDialogController {
     @FXML
     private void handleTallyVotes() {
         try {
-            // 1. Odabir .p12 fajla organizatora
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Odaberite Vaš .p12 sertifikat (Organizator)");
             fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PKCS12 Certifikat (*.p12)", "*.p12"));
@@ -45,7 +44,6 @@ public class TallyDialogController {
 
             if (p12File == null) return;
 
-            // 2. Unos lozinke
             TextInputDialog passwordDialog = new TextInputDialog();
             passwordDialog.setTitle("Autentifikacija Organizatora");
             passwordDialog.setHeaderText("Unesite lozinku za Vaš privatni ključ:");
@@ -57,11 +55,9 @@ public class TallyDialogController {
             String password = passwordResult.get();
             String username = UserSession.getUsername();
 
-            // 3. Izvlačenje privatnog ključa i konverzija u PEM format
             PrivateKey privateKey = KeyStoreHelper.loadPrivateKeyFromP12(p12File, username, password);
             String privateKeyPem = convertPrivateKeyToPem(privateKey);
 
-            // 4. Slanje na backend za prebrojavanje (/api/voting/tally/{electionId})
             sendTallyRequest(privateKeyPem);
 
         } catch (Exception e) {
@@ -78,7 +74,6 @@ public class TallyDialogController {
         conn.setRequestProperty("Content-Type", "application/json");
         conn.setDoOutput(true);
 
-        // Escape-ujemo nove redove u PEM stringu za JSON format
         String jsonPayload = String.format("{\"organizerPrivateKeyPem\":\"%s\"}",
                 privateKeyPem.replace("\n", "\\n").replace("\r", ""));
 
@@ -106,7 +101,6 @@ public class TallyDialogController {
         statusLabel.setTextFill(Color.GREEN);
         statusLabel.setText("Glasovi uspješno dešifrovani i prebrojani!");
 
-        // Jednostavno ekstrakovanje za prikaz
         int totalVotesIndex = jsonResponse.indexOf("\"totalVotes\":");
         if (totalVotesIndex != -1) {
             int start = totalVotesIndex + 13;
@@ -115,7 +109,6 @@ public class TallyDialogController {
             totalVotesLabel.setText("Ukupno prebrojano glasova: " + jsonResponse.substring(start, end).trim());
         }
 
-        // Prikaz raw ili formatiranog rezultata u ListView
         resultsListView.getItems().add("Rezultati glasanja (po opcijama):");
         resultsListView.getItems().add(jsonResponse);
     }

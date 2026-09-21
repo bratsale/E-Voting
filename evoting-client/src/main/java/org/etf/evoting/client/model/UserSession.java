@@ -31,8 +31,8 @@ public class UserSession {
         certificate = null;
     }
 
-    public static Integer getUserId() { return userId; } // DODATO
-    public void setUserId(Integer userId) { this.userId = userId; } // DODATO
+    public static Integer getUserId() { return userId; }
+    public void setUserId(Integer userId) { this.userId = userId; }
 
     public static String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }

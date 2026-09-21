@@ -33,24 +33,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String username = null;
         String jwtToken = null;
 
-        // 1. Provjera da li postoji Bearer token u zaglavlju
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwtToken = authHeader.substring(7);
             try {
                 username = jwtUtil.extractUsername(jwtToken);
             } catch (Exception e) {
-                // Token nevalidan, istekao ili loše formatiran
                 logger.error("Neuspješno ekstrakovanje korisničkog imena iz JWT tokena: " + e.getMessage());
             }
         }
 
-        // 2. Ako je username ekstrahovan i korisnik nije već autentifikovan u SecurityContext-u
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
             if (!jwtUtil.isTokenExpired(jwtToken)) {
                 String role = jwtUtil.extractRole(jwtToken);
 
-                // Spring Security očekuje role sa prefiksom "ROLE_"
                 SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
 
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -61,7 +57,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // Postavljamo autentifikovanog korisnika u kontekst
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }

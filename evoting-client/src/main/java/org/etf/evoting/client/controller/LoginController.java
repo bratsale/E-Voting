@@ -53,7 +53,6 @@ public class LoginController {
         String password = passwordField.getText().trim();
         String certPath = certPathField.getText().trim();
 
-        // 1. Provjera osnovnih polja
         if (username.isEmpty() || password.isEmpty()) {
             showError("Molimo unesite korisničko ime i lozinku.");
             return;
@@ -74,14 +73,13 @@ public class LoginController {
             return;
         }
 
-        // 2. Čitanje sertifikata i ključa iz .p12 fajla DOK SE PRIPREMA ZAHTJEV
         X509Certificate cert = null;
         PrivateKey privateKey = null;
         String certPem = null;
 
         try (FileInputStream fis = new FileInputStream(selectedCertFile)) {
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            keyStore.load(fis, password.toCharArray()); // Lozinka .p12 kontejnera
+            keyStore.load(fis, password.toCharArray());
 
             String alias = keyStore.aliases().nextElement();
             privateKey = (PrivateKey) keyStore.getKey(alias, password.toCharArray());
@@ -95,7 +93,6 @@ public class LoginController {
         }
 
         try {
-            // 3. Formiranje JSON zahtjeva sa username, password I certificatePem
             ObjectNode payload = objectMapper.createObjectNode();
             payload.put("username", username);
             payload.put("password", password);
@@ -112,7 +109,6 @@ public class LoginController {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                // 4. Parsiranje JSON odgovora
                 JsonNode jsonResponse = objectMapper.readTree(response.body());
                 String token = jsonResponse.has("token") ? jsonResponse.get("token").asText() : "";
                 String role = jsonResponse.has("role") ? jsonResponse.get("role").asText() : "ROLE_VOTER";
@@ -124,7 +120,6 @@ public class LoginController {
                     userId = jsonResponse.get("id").asInt();
                 }
 
-                // 5. Čuvanje svih podataka i sertifikata u klijentsku sesiju
                 UserSession.getInstance().setUsername(username);
                 UserSession.getInstance().setToken(token);
                 UserSession.getInstance().setRole(role);
@@ -132,7 +127,6 @@ public class LoginController {
                 UserSession.getInstance().setPrivateKey(privateKey);
                 UserSession.getInstance().setCertificate(cert);
 
-                // 6. Otvaranje Dashboard-a
                 Stage stage = (Stage) usernameField.getScene().getWindow();
                 Parent root = FXMLLoader.load(getClass().getResource("/fxml/dashboard.fxml"));
                 stage.setScene(new Scene(root, 800, 600));
@@ -140,7 +134,6 @@ public class LoginController {
                 stage.centerOnScreen();
 
             } else {
-                // Izvlačenje tačne poruke greške sa bekenda (npr. "Priloženi sertifikat pripada korisniku...")
                 String serverMsg = "Neispravni podaci za prijavu ili sertifikat!";
                 try {
                     JsonNode errJson = objectMapper.readTree(response.body());
@@ -157,9 +150,6 @@ public class LoginController {
         }
     }
 
-    /**
-     * Pomoćna metoda za prevođenje X509Certificate u PEM string.
-     */
     private String convertToPem(X509Certificate cert) throws Exception {
         String base64Cert = Base64.getEncoder().encodeToString(cert.getEncoded());
         return "-----BEGIN CERTIFICATE-----\n" +

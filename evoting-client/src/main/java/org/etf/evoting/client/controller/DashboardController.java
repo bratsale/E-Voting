@@ -63,17 +63,14 @@ public class DashboardController {
             createElectionButton.setVisible(true);
         }
 
-        // Podešavanje kolona za aktivnu tabelu
         activeTitleColumn.setCellValueFactory(new PropertyValueFactory<>("title"));
         activeStatusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
         setupActionColumn(activeActionColumn, true);
 
-        // Podešavanje kolona za završenu tabelu
         finishedTitleColumn.setCellValueFactory(new PropertyValueFactory<>("title"));
         finishedStatusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
         setupActionColumn(finishedActionColumn, false);
 
-        // Event pri zamjeni taba
         mainTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
             if (newTab == activeTab) {
                 loadActiveElections();
@@ -82,7 +79,6 @@ public class DashboardController {
             }
         });
 
-        // Učitaj početne podatke
         loadActiveElections();
     }
 
@@ -287,5 +283,59 @@ public class DashboardController {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @FXML
+    private void handleVerifyVote() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Verifikacija glasa");
+        dialog.setHeaderText("Verifikujte prisustvo i integritet vašeg glasa u bazi");
+        dialog.setContentText("Unesite kod potvrde (Receipt Code):");
+
+        dialog.showAndWait().ifPresent(receiptCode -> {
+            if (receiptCode.trim().isEmpty()) {
+                showErrorAlert("Greška", "Kod potvrde ne smije biti prazan.");
+                return;
+            }
+
+            String token = UserSession.getInstance().getToken();
+            String url = "http://localhost:8080/api/voting/verify/" + receiptCode.trim();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Authorization", "Bearer " + token)
+                    .GET()
+                    .build();
+
+            httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenAccept(response -> {
+                        Platform.runLater(() -> {
+                            try {
+                                com.fasterxml.jackson.databind.JsonNode json = objectMapper.readTree(response.body());
+                                String message = json.has("message") ? json.get("message").asText() : response.body();
+
+                                if (response.statusCode() == 200 && json.has("valid") && json.get("valid").asBoolean()) {
+                                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                                    alert.setTitle("Verifikacija Uspješna");
+                                    alert.setHeaderText(" Glas je ispravan!");
+                                    alert.setContentText(message);
+                                    alert.showAndWait();
+                                } else {
+                                    Alert alert = new Alert(Alert.AlertType.WARNING);
+                                    alert.setTitle("Neuspješna verifikacija");
+                                    alert.setHeaderText("❌ Glas nije verifikovan");
+                                    alert.setContentText(message);
+                                    alert.showAndWait();
+                                }
+                            } catch (Exception e) {
+                                showErrorAlert("Greška", "Nije moguće obraditi odgovor servera: " + response.body());
+                            }
+                        });
+                    })
+                    .exceptionally(ex -> {
+                        Platform.runLater(() -> showErrorAlert("Greška", "Mrežna greška: " + ex.getMessage()));
+                        return null;
+                    });
+        });
     }
 }

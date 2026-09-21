@@ -11,6 +11,7 @@ import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.springframework.stereotype.Service;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -34,8 +35,7 @@ import java.util.Date;
 @Service
 public class CryptoService {
 
-  private static final String PKI_PATH = "pki"; // Putanja do tvog pki foldera
-  private static final String HMAC_SECRET = "MojSuperTajniHmacKljucZaMetapodatke123!"; // U produkciji iz application.properties
+  private static final String HMAC_SECRET = "MojSuperTajniHmacKljucZaMetapodatke123!";
 
 
   static {
@@ -44,19 +44,12 @@ public class CryptoService {
     }
   }
 
-
-  /**
-   * 1. Generiše nasumični AES-256 simetrični ključ
-   */
   public SecretKey generateAESKey() throws Exception {
     KeyGenerator keyGen = KeyGenerator.getInstance("AES");
     keyGen.init(256);
     return keyGen.generateKey();
   }
 
-  /**
-   * 2. Enkriptuje glas simetričnim AES ključem (AES/GCM/NoPadding)
-   */
   public byte[] encryptVoteWithAES(String voteContent, SecretKey aesKey, byte[] iv) throws Exception {
     Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", "BC");
     GCMParameterSpec spec = new GCMParameterSpec(128, iv);
@@ -64,18 +57,12 @@ public class CryptoService {
     return cipher.doFinal(voteContent.getBytes(StandardCharsets.UTF_8));
   }
 
-  /**
-   * 3. Enkriptuje AES simetrični ključ sa RSA javnim ključem Organizatora
-   */
   public byte[] encryptAESKeyWithOrganizerPublicKey(SecretKey aesKey, PublicKey organizerPublicKey) throws Exception {
     Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding", "BC");
     cipher.init(Cipher.ENCRYPT_MODE, organizerPublicKey);
     return cipher.doFinal(aesKey.getEncoded());
   }
 
-  /**
-   * 4. Izračunava HMAC-SHA256 za metapodatke glasanja radi očuvanja integriteta
-   */
   public String calculateMetadataHMAC(String metadataData) throws Exception {
     Mac sha256HMAC = Mac.getInstance("HmacSHA256");
     SecretKeySpec secretKey = new SecretKeySpec(HMAC_SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
@@ -84,9 +71,6 @@ public class CryptoService {
     return Base64.getEncoder().encodeToString(hmacBytes);
   }
 
-  /**
-   * 5. Dešifruje AES ključ sa RSA privatnim ključem Organizatora (Prilikom brojanja glasova)
-   */
   public SecretKey decryptAESKeyWithOrganizerPrivateKey(byte[] encryptedAesKey, PrivateKey organizerPrivateKey) throws Exception {
     Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding", "BC");
     cipher.init(Cipher.DECRYPT_MODE, organizerPrivateKey);
@@ -94,9 +78,6 @@ public class CryptoService {
     return new SecretKeySpec(decryptedKeyBytes, "AES");
   }
 
-  /**
-   * 6. Dešifruje sam glas sa dešifrovanim AES ključem
-   */
   public String decryptVoteWithAES(byte[] encryptedVote, SecretKey aesKey, byte[] iv) throws Exception {
     Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", "BC");
     GCMParameterSpec spec = new GCMParameterSpec(128, iv);
@@ -105,68 +86,56 @@ public class CryptoService {
     return new String(decryptedBytes, StandardCharsets.UTF_8);
   }
 
-  /**
-   * Glavna metoda za kreiranje i čuvanje korisničkog sertifikata i .p12 kontejnera.
-   */
   public String generateAndSaveUserCertificate(String username, String roleStr, String p12Password) throws Exception {
-    boolean isOrganizer = "ORGANIZER".equalsIgnoreCase(roleStr); //[cite: 4]
+    boolean isOrganizer = "ORGANIZER".equalsIgnoreCase(roleStr);
 
-    // 1. Odredi baznu putanju do PKI foldera[cite: 4]
-    Path pkiPath = Paths.get("pki"); //[cite: 4]
-    if (!Files.exists(pkiPath)) { //[cite: 4]
-      pkiPath = Paths.get("evoting-backend", "pki"); //[cite: 4]
+    Path pkiPath = Paths.get("pki");
+    if (!Files.exists(pkiPath)) {
+      pkiPath = Paths.get("evoting-backend", "pki");
     }
 
-    // 2. Putanje do Sub-CA (glasacki ili organizacioni)[cite: 4]
-    String caDir = isOrganizer ? "organizacioni-ca" : "glasacki-ca"; //[cite: 4]
-    String caFileName = isOrganizer ? "organizacioni" : "glasacki"; //[cite: 4]
+    String caDir = isOrganizer ? "organizacioni-ca" : "glasacki-ca";
+    String caFileName = isOrganizer ? "organizacioni" : "glasacki";
 
-    Path caCertPath = pkiPath.resolve(caDir).resolve(caFileName + ".crt"); //[cite: 4]
-    Path caKeyPath = pkiPath.resolve(caDir).resolve(caFileName + ".key"); //[cite: 4]
+    Path caCertPath = pkiPath.resolve(caDir).resolve(caFileName + ".crt");
+    Path caKeyPath = pkiPath.resolve(caDir).resolve(caFileName + ".key");
 
-    // TAČNA PUTANJA DO ROOT CA: root-ca/root.crt
     Path rootCertPath = pkiPath.resolve("root-ca").resolve("root.crt");
 
-    if (!Files.exists(caCertPath) || !Files.exists(caKeyPath)) { //[cite: 4]
-      throw new FileNotFoundException("Nisu pronađeni Sub-CA fajlovi na putanji: " + caCertPath.toAbsolutePath()); //[cite: 4]
+    if (!Files.exists(caCertPath) || !Files.exists(caKeyPath)) {
+      throw new FileNotFoundException("Nisu pronađeni Sub-CA fajlovi na putanji: " + caCertPath.toAbsolutePath());
     }
     if (!Files.exists(rootCertPath)) {
       throw new FileNotFoundException("Nije pronađen Root CA sertifikat na putanji: " + rootCertPath.toAbsolutePath());
     }
 
-    // 3. Učitaj Sub-CA i Root CA sertifikate[cite: 4]
-    X509Certificate caCert = loadCertificateFromPemFile(caCertPath.toFile()); //[cite: 4]
-    PrivateKey caPrivateKey = loadPrivateKeyFromPemFile(caKeyPath.toFile()); //[cite: 4]
+    X509Certificate caCert = loadCertificateFromPemFile(caCertPath.toFile());
+    PrivateKey caPrivateKey = loadPrivateKeyFromPemFile(caKeyPath.toFile());
     X509Certificate rootCert = loadCertificateFromPemFile(rootCertPath.toFile());
 
-    // 4. Generiši novi RSA par ključeva za korisnika[cite: 4]
-    KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA"); //[cite: 4]
-    keyPairGen.initialize(2048); //[cite: 4]
-    KeyPair userKeyPair = keyPairGen.generateKeyPair(); //[cite: 4]
+    KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
+    keyPairGen.initialize(2048);
+    KeyPair userKeyPair = keyPairGen.generateKeyPair();
 
-    // 5. Napravi sertifikat potpisan od strane Sub-CA[cite: 4]
-    X509Certificate userCert = createSignedCertificate(username, userKeyPair.getPublic(), caCert, caPrivateKey); //[cite: 4]
+    X509Certificate userCert = createSignedCertificate(username, userKeyPair.getPublic(), caCert, caPrivateKey);
 
-    // 6. Odredi podfolder za čuvanje korisnika[cite: 4]
-    String targetSubfolder = isOrganizer ? "organizatori" : "glasaci"; //[cite: 4]
-    Path userCertsDir = pkiPath.resolve("korisnici").resolve(targetSubfolder); //[cite: 4]
-    Files.createDirectories(userCertsDir); //[cite: 4]
+    String targetSubfolder = isOrganizer ? "organizatori" : "glasaci";
+    Path userCertsDir = pkiPath.resolve("korisnici").resolve(targetSubfolder);
+    Files.createDirectories(userCertsDir);
 
-    // 7. Sačuvaj .p12 sa punim lancem[cite: 4]
-    Path p12FilePath = userCertsDir.resolve(username + ".p12"); //[cite: 4]
+    Path p12FilePath = userCertsDir.resolve(username + ".p12");
     saveToPkcs12(p12FilePath.toFile(), username, userKeyPair.getPrivate(), userCert, caCert, rootCert, p12Password);
 
-    System.out.println("✅ Generisan .p12 na: " + p12FilePath.toAbsolutePath()); //[cite: 4]
+    System.out.println("Generisan .p12 na: " + p12FilePath.toAbsolutePath());
 
-    return convertToPem(userCert); //[cite: 4]
+    return convertToPem(userCert);
   }
 
   private X509Certificate createSignedCertificate(String username, PublicKey userPublicKey, X509Certificate caCert, PrivateKey caPrivateKey) throws Exception {
     long now = System.currentTimeMillis();
-    Date startDate = new Date(now - 60000L); // 1 minut u prošlost radi vremenskih odstupanja
+    Date startDate = new Date(now - 60000L); // 1 min u prošlost
     Date endDate = new Date(now + 365L * 24 * 60 * 60 * 1000);
 
-    // VAŽNO: Koristimo tačan Principal iz CA sertifikata za Issuer-a
     X500Name issuer = new X500Name(caCert.getSubjectX500Principal().getName());
     X500Name subject = new X500Name("CN=" + username + ", O=ETF Banja Luka, C=BA");
     BigInteger serialNumber = BigInteger.valueOf(now);
@@ -180,12 +149,26 @@ public class CryptoService {
             userPublicKey
     );
 
+    JcaX509ExtensionUtils extUtils = new JcaX509ExtensionUtils();
+
+    certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true,
+            new org.bouncycastle.asn1.x509.BasicConstraints(false));
+
+    certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.keyUsage, true,
+            new org.bouncycastle.asn1.x509.KeyUsage(
+                    org.bouncycastle.asn1.x509.KeyUsage.digitalSignature |
+                            org.bouncycastle.asn1.x509.KeyUsage.keyEncipherment
+            ));
+
+    certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.subjectKeyIdentifier, false,
+            extUtils.createSubjectKeyIdentifier(userPublicKey));
+    certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.authorityKeyIdentifier, false,
+            extUtils.createAuthorityKeyIdentifier(caCert));
+
     ContentSigner contentSigner = new JcaContentSignerBuilder("SHA256WithRSAEncryption")
             .build(caPrivateKey);
 
     X509Certificate userCert = new JcaX509CertificateConverter().getCertificate(certBuilder.build(contentSigner));
-
-    // Provjera valjanosti u odnosu na CA ključ
     userCert.verify(caCert.getPublicKey());
 
     return userCert;
@@ -200,17 +183,15 @@ public class CryptoService {
           X509Certificate rootCert,
           String password) throws Exception {
 
-    // VAŽNO: Navodimo "BC" (BouncyCastle) kao provider da KeyStore prihati lanac bez Sun JCE restrikcija
     KeyStore keyStore = KeyStore.getInstance("PKCS12", "BC");
-    keyStore.load(null, null); //[cite: 4]
+    keyStore.load(null, null);
 
-    // Puni lanac od korisnika preko podređenog CA do Root CA
     X509Certificate[] chain = new X509Certificate[]{ userCert, caCert, rootCert };
 
-    keyStore.setKeyEntry(alias, privateKey, password.toCharArray(), chain); //[cite: 4]
+    keyStore.setKeyEntry(alias, privateKey, password.toCharArray(), chain);
 
-    try (FileOutputStream fos = new FileOutputStream(outFile)) { //[cite: 4]
-      keyStore.store(fos, password.toCharArray()); //[cite: 4]
+    try (FileOutputStream fos = new FileOutputStream(outFile)) {
+      keyStore.store(fos, password.toCharArray());
     }
   }
 
@@ -271,13 +252,10 @@ public class CryptoService {
       throw new IllegalArgumentException("Digitalni sertifikat je obavezan za prijavu.");
     }
 
-    // 1. Konvertuj PEM u X509Certificate
     X509Certificate userCert = convertPemToCertificate(certificatePem);
 
-    // 2. Provjeri vremensku važenost (da nije istekao)
     userCert.checkValidity();
 
-    // 3. Učitaj odgovarajući CA sertifikat
     Path pkiPath = Paths.get("pki");
     if (!Files.exists(pkiPath)) {
       pkiPath = Paths.get("evoting-backend", "pki");
@@ -290,10 +268,19 @@ public class CryptoService {
 
     X509Certificate caCert = loadCertificateFromPemFile(caCertPath.toFile());
 
-    // 4. Verifikuj da je sertifikatista potpisan od našeg CA
     userCert.verify(caCert.getPublicKey());
 
-    // 5. STROGA PROVJERA IDENTITY-ja: Ekstrakcija CN-a iz sertifikata i poređenje sa username-om
+    Path crlPath = pkiPath.resolve(caDir).resolve(caFileName + ".crl");
+    if (Files.exists(crlPath)) {
+      java.security.cert.CertificateFactory cf = java.security.cert.CertificateFactory.getInstance("X.509");
+      try (FileInputStream fis = new FileInputStream(crlPath.toFile())) {
+        java.security.cert.X509CRL crl = (java.security.cert.X509CRL) cf.generateCRL(fis);
+        if (crl.isRevoked(userCert)) {
+          throw new SecurityException("Sertifikat za korisnika '" + expectedUsername + "' je OPOZVAN (nalazi se na CRL listi)!");
+        }
+      }
+    }
+
     String dn = userCert.getSubjectX500Principal().getName();
     String certUsername = extractCNFromDN(dn);
 
@@ -312,9 +299,6 @@ public class CryptoService {
     return "";
   }
 
-  /**
-   * Konvertuje PEM String privatnog ključa u PrivateKey objekat
-   */
   public PrivateKey convertPemToPrivateKey(String privateKeyPem) throws Exception {
     try (Reader reader = new StringReader(privateKeyPem);
          PEMParser pemParser = new PEMParser(reader)) {
@@ -331,9 +315,6 @@ public class CryptoService {
     }
   }
 
-  /**
-   * Konvertuje PEM String javnog ključa u PublicKey objekat
-   */
   public PublicKey convertPemToPublicKey(String publicKeyPem) throws Exception {
     String cleanPem = publicKeyPem
             .replace("-----BEGIN PUBLIC KEY-----", "")
@@ -344,16 +325,5 @@ public class CryptoService {
     X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decoded);
     KeyFactory keyFactory = KeyFactory.getInstance("RSA", "BC");
     return keyFactory.generatePublic(keySpec);
-  }
-
-  /**
-   * Učitava privatni ključ direktno iz .p12 fajla preko lozinke
-   */
-  public PrivateKey loadPrivateKeyFromP12(File p12File, String alias, String password) throws Exception {
-    KeyStore keyStore = KeyStore.getInstance("PKCS12", "BC");
-    try (FileInputStream fis = new FileInputStream(p12File)) {
-      keyStore.load(fis, password.toCharArray());
-    }
-    return (PrivateKey) keyStore.getKey(alias, password.toCharArray());
   }
 }

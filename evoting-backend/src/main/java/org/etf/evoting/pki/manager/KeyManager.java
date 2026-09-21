@@ -17,14 +17,12 @@ import java.security.SecureRandom;
 
 public class KeyManager {
 
-  // Generisanje RSA para ključeva
   public static KeyPair generateRSAKeyPair(int keySize) throws Exception {
     KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
     keyPairGenerator.initialize(keySize, new SecureRandom());
     return keyPairGenerator.generateKeyPair();
   }
 
-  // Čuvanje bilo kojeg objekta (ključ, sertifikat) u PEM formatu
   public static void saveToPEM(Object object, String directoryPath, String fileName) throws Exception {
     Path dirPath = Paths.get(directoryPath);
     if (!Files.exists(dirPath)) {
@@ -39,7 +37,6 @@ public class KeyManager {
     }
   }
 
-  // Učitavanje privatnog ključa sa diska (PEM format)
   public static PrivateKey loadPrivateKeyFromPEM(String filePath) throws Exception {
     try (FileReader fr = new FileReader(filePath);
         PEMParser pemParser = new PEMParser(fr)) {

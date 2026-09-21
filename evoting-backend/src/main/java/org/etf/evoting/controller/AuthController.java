@@ -28,7 +28,6 @@ public class AuthController {
 
   /**
    * DTO za registraciju korisnika.
-   * Ugrađena polja za Glasača (firstName, lastName) i Organizatora (orgName, orgId).
    */
   public static class RegisterRequest {
     public String username;
@@ -43,7 +42,7 @@ public class AuthController {
     public String orgName;
     public String orgId;
 
-    public String certificatePem; // Ako se šalje eksterni sertifikat (opciono)
+    public String certificatePem; // Opciono
   }
 
   /**
@@ -62,13 +61,13 @@ public class AuthController {
     public String token;
     public String username;
     public String role;
-    public Integer userId; // ✅ Dodato polje
+    public Integer userId;
 
     public LoginResponse(String token, String username, String role, Integer userId) {
       this.token = token;
       this.username = username;
       this.role = role;
-      this.userId = userId; // ✅ Postavljanje ID-a
+      this.userId = userId;
     }
   }
 
@@ -78,7 +77,6 @@ public class AuthController {
   @PostMapping("/register")
   public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
     try {
-      // Prilagodi poziv registracije u UserService zavisno od toga kako si tamo definisao metod
       User registeredUser = userService.registerUser(
               request.username,
               request.password,
@@ -90,12 +88,10 @@ public class AuthController {
               request.certificatePem
       );
 
-      // ✅ Vraćamo JSON: {"message": "Korisnik 'sasa' uspješno registrovan!"}
       return ResponseEntity.ok(Map.of(
               "message", "Korisnik '" + registeredUser.getUsername() + "' uspješno registrovan!"
       ));
     } catch (IllegalArgumentException e) {
-      // ✅ Vraćamo JSON grešku: {"message": "Korisničko ime je već zauzeto."}
       return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
     } catch (Exception e) {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -109,7 +105,6 @@ public class AuthController {
   @PostMapping("/login")
   public ResponseEntity<?> login(@RequestBody LoginRequest request) {
     try {
-      // 1. Provjera lozinke i korisnika u bazi
       Optional<User> userOpt = userService.login(request.username, request.password);
 
       if (userOpt.isEmpty()) {
@@ -119,22 +114,18 @@ public class AuthController {
 
       User user = userOpt.get();
 
-      // 2. VERIFIKACIJA DIGITALNOG SERTIFIKATA (2FA)
       if (request.certificatePem == null || request.certificatePem.isBlank()) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("message", "Niste priložili digitalni sertifikat."));
       }
 
-      // Pozivamo proveru da li je sertifikat validan i pripada li prijavljenom korisniku
       cryptoService.validateUserCertificate(request.certificatePem, user.getUsername(), user.getRole().name());
 
-      // 3. Ako su i lozinka i sertifikat ispravni, izdajemo JWT token
       String token = jwtUtil.generateToken(user.getUsername(), user.getId(), user.getRole().name());
 
       return ResponseEntity.ok(new LoginResponse(token, user.getUsername(), user.getRole().name(), user.getId()));
 
     } catch (SecurityException | IllegalArgumentException e) {
-      // Odbijamo login ako sertifikat nije od tog korisnika ili nije validan
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
               .body(Map.of("message", "Greška pri verifikaciji sertifikata: " + e.getMessage()));
     } catch (Exception e) {

@@ -12,15 +12,10 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    // Generisanje tajnog ključa za potpisivanje JWT tokena (u produkciji se vuče iz application.properties)
     private final Key SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
 
-    // Trajanje tokena: 24 sata
     private final long EXPIRATION_TIME = 86400000;
 
-    /**
-     * Generisanje tokena za zadatog korisnika sa njegovom ulogom i ID-jem.
-     */
     public String generateToken(String username, Integer userId, String role) {
         return Jwts.builder()
                 .setSubject(username)
@@ -32,37 +27,22 @@ public class JwtUtil {
                 .compact();
     }
 
-    /**
-     * Izvlačenje korisničkog imena iz tokena.
-     */
     public String extractUsername(String token) {
         return extractAllClaims(token).getSubject();
     }
 
-    /**
-     * Izvlačenje uloge korisnika iz tokena.
-     */
     public String extractRole(String token) {
         return extractAllClaims(token).get("role", String.class);
     }
 
-    /**
-     * Izvlačenje ID-ja korisnika iz tokena.
-     */
     public Integer extractUserId(String token) {
         return extractAllClaims(token).get("userId", Integer.class);
     }
 
-    /**
-     * Provjera da li je token istekao.
-     */
     public boolean isTokenExpired(String token) {
         return extractAllClaims(token).getExpiration().before(new Date());
     }
 
-    /**
-     * Validacija tokena.
-     */
     public boolean validateToken(String token, String username) {
         final String extractedUsername = extractUsername(token);
         return (extractedUsername.equals(username) && !isTokenExpired(token));

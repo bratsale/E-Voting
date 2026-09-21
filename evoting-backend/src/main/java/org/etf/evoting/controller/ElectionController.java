@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/elections")
@@ -36,7 +37,7 @@ public class ElectionController {
     public String endDate;
     public Integer organizerId;
     public List<String> options;
-    public String publicKey; // Dodato polje za RSA javni ključ sa klijenta
+    public String publicKey;
   }
 
   /**
@@ -51,8 +52,6 @@ public class ElectionController {
       LocalDateTime start = LocalDateTime.parse(request.startDate);
       LocalDateTime end = LocalDateTime.parse(request.endDate);
 
-      // Ako tvoj ElectionService prihvata i publicKey, proslijedi ga ovdje:
-      // Pretpostavka je da je metoda proširena ili koristi polje iz DTO-a
       Election created = electionService.createElection(
               request.title,
               request.description,
@@ -60,7 +59,7 @@ public class ElectionController {
               end,
               organizer,
               request.options,
-              request.publicKey // Otkomentariši ako je metoda u ElectionService-u ažurirana da prima publicKey
+              request.publicKey
       );
 
       return ResponseEntity.ok("Izbori '" + created.getTitle() + "' uspješno kreirani sa ID-jem: " + created.getId());
@@ -127,4 +126,5 @@ public class ElectionController {
 
     return ResponseEntity.ok(dtos);
   }
+
 }

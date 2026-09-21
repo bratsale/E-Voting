@@ -8,9 +8,7 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Integer> {
 
-  // Za autentifikaciju i provjeru sertifikata
   Optional<User> findByUsername(String username);
 
-  // Brza provjera postojanja
   boolean existsByUsername(String username);
 }

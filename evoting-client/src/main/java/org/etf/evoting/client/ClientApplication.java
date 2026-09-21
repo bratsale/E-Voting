@@ -10,7 +10,6 @@ public class ClientApplication extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
-        // Učitavamo login.fxml iz resources/fxml/ foldera
         Parent root = FXMLLoader.load(getClass().getResource("/fxml/login.fxml"));
         Scene scene = new Scene(root, 500, 400);
 

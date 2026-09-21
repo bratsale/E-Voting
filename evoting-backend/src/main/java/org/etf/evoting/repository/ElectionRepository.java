@@ -10,9 +10,7 @@ import java.util.List;
 @Repository
 public interface ElectionRepository extends JpaRepository<Election, Integer> {
 
-  // Pronalaženje svih izbora određenog statusa (npr. ACTIVE)
   List<Election> findByStatus(ElectionStatus status);
 
-  // Pronalaženje svih izbora koje je kreirao određeni organizator
   List<Election> findByOrganizer(User organizer);
 }

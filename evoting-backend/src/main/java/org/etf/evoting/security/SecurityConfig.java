@@ -40,8 +40,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/elections/active").authenticated()
                         .requestMatchers("/api/elections/{id}/results").authenticated()
                         .requestMatchers("/api/voting/cast").hasAnyAuthority("VOTER", "ROLE_VOTER", "USER")
-
-                        // Za sve ostalo tražimo autentifikaciju
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

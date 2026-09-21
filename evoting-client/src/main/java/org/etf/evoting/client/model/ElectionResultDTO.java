@@ -7,7 +7,7 @@ public class ElectionResultDTO {
     private Integer electionId;
     private String electionTitle;
     private long totalVotes;
-    private Map<String, Long> voteCounts; // Naziv opcije -> Broj glasova
+    private Map<String, Long> voteCounts;
     private String reportContent;
     private String reportSignatureBase64;
 
@@ -30,7 +30,6 @@ public class ElectionResultDTO {
         this.reportSignatureBase64 = reportSignatureBase64;
     }
 
-    // Getteri i Setteri
     public Integer getElectionId() { return electionId; }
     public void setElectionId(Integer electionId) { this.electionId = electionId; }
 

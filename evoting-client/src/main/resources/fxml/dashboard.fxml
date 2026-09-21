@@ -31,6 +31,7 @@
                     </font>
                 </Label>
                 <Region HBox.hgrow="ALWAYS" />
+                <Button text="🔍 Verifikuj glas" onAction="#handleVerifyVote" style="-fx-background-color: #00838F; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" />
                 <Button fx:id="createElectionButton" text="+ Novo Glasanje" onAction="#handleOpenCreateElectionModal" style="-fx-background-color: #2E7D32; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" visible="false" />
             </HBox>
 

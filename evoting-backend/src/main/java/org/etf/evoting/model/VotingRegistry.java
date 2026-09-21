@@ -24,7 +24,6 @@ public class VotingRegistry {
   @Column(name = "voted_at", insertable = false, updatable = false)
   private LocalDateTime votedAt;
 
-  // Konstruktori
   public VotingRegistry() {
   }
 
@@ -33,7 +32,6 @@ public class VotingRegistry {
     this.election = election;
   }
 
-  // Getteri i Setteri
   public Integer getId() {
     return id;
   }

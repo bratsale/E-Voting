@@ -10,7 +10,6 @@ import java.util.Optional;
 @Repository
 public interface BallotRepository extends JpaRepository<Ballot, Integer> {
 
-  // Povlačenje svih listića za određene izbore radi brojanja/verifikacije
   List<Ballot> findByElection(Election election);
 
   Optional<Ballot> findByReceiptCode(String receiptCode);

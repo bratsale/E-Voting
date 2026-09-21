@@ -17,7 +17,6 @@ public class ElectionOption {
     @Column(name = "option_text", nullable = false, length = 255)
     private String optionText;
 
-    // Konstruktori
     public ElectionOption() {}
 
     public ElectionOption(Election election, String optionText) {
@@ -25,7 +24,6 @@ public class ElectionOption {
         this.optionText = optionText;
     }
 
-    // Getteri i Setteri
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
 

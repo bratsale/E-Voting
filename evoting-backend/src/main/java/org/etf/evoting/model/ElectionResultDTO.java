@@ -7,9 +7,9 @@ public class ElectionResultDTO {
     private Integer electionId;
     private String electionTitle;
     private long totalVotes;
-    private Map<String, Long> voteCounts; // Naziv opcije -> Broj glasova
-    private String reportContent;          // Tekstualni sadržaj izvještaja
-    private String reportSignatureBase64;  // Digitalni potpis izvještaja
+    private Map<String, Long> voteCounts;
+    private String reportContent;
+    private String reportSignatureBase64;
 
     // Prazan konstruktor (potreban Jacksonu za serijalizaciju/deserijalizaciju)
     public ElectionResultDTO() {}
@@ -31,7 +31,6 @@ public class ElectionResultDTO {
         this.reportSignatureBase64 = reportSignatureBase64;
     }
 
-    // Getters i Setters
     public Integer getElectionId() { return electionId; }
     public void setElectionId(Integer electionId) { this.electionId = electionId; }
 

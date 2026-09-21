@@ -20,7 +20,6 @@ import java.util.Date;
 
 public class CertBuilder {
 
-  // 1. Izgradnja samopotpisanog Root CA sertifikata
   public static X509Certificate buildRootCertificate(KeyPair keyPair, String subjectDN) throws Exception {
     X500Name name = new X500Name(subjectDN);
     BigInteger serialNumber = new BigInteger(64, new SecureRandom());
@@ -35,7 +34,6 @@ public class CertBuilder {
     return signCertificate(certBuilder, keyPair.getPrivate());
   }
 
-  // 2. Izgradnja podređenog (Subordinate) CA sertifikata
   public static X509Certificate buildSubordinateCertificate(
       KeyPair subKeyPair, String subDN, X509Certificate issuerCert, PrivateKey issuerPrivateKey) throws Exception {
 
@@ -53,7 +51,6 @@ public class CertBuilder {
     return signCertificate(certBuilder, issuerPrivateKey);
   }
 
-  // 3. Izgradnja sertifikata za krajnjeg korisnika
   public static X509Certificate buildUserCertificate(
       KeyPair userKeyPair, String userDN, X509Certificate caCert, PrivateKey caPrivateKey) throws Exception {
 

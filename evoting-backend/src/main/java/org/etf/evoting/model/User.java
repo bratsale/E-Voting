@@ -39,9 +39,7 @@ public class User {
   @Column(name = "org_id", nullable = true)
   private String orgId;
 
-// + odgovarajući getter-i i setter-i za ova polja
 
-  // Konstruktori
   public User() {
   }
 
@@ -52,7 +50,6 @@ public class User {
     this.certificatePem = certificatePem;
   }
 
-  // Getteri i Setteri
   public Integer getId() {
     return id;
   }

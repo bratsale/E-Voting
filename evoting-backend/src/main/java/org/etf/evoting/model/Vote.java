@@ -15,25 +15,24 @@ public class Vote {
 
     @Lob
     @Column(name = "encrypted_vote", nullable = false, columnDefinition = "LONGTEXT")
-    private String encryptedVoteBase64; // AES enkriptovan ID opcije
+    private String encryptedVoteBase64;
 
     @Lob
     @Column(name = "encrypted_sym_key", nullable = false, columnDefinition = "LONGTEXT")
-    private String encryptedSymKeyBase64; // AES ključ enkriptovan RSA javnim ključem organizatora
+    private String encryptedSymKeyBase64;
 
     @Column(name = "iv_base64", nullable = false)
-    private String ivBase64; // IV za AES/GCM
+    private String ivBase64;
 
     @Lob
     @Column(name = "voter_signature", nullable = false, columnDefinition = "LONGTEXT")
-    private String voterSignatureBase64; // Digitalni potpis glasača
+    private String voterSignatureBase64;
 
     @Column(name = "receipt_code", nullable = false, unique = true)
-    private String receiptCode; // Nasumični UUID kod koji se predaje glasaču za verifikaciju
+    private String receiptCode;
 
     public Vote() {}
 
-    // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

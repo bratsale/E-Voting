@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.chart.PieChart?>
-<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.layout.HBox?>
@@ -23,12 +21,6 @@
             </font>
         </Label>
 
-        <HBox alignment="CENTER_LEFT" spacing="10.0">
-            <children>
-                <Button mnemonicParsing="false" onAction="#handleLoadPrivateKeyAndFetchResults" text="Učitaj ključ i prikaži rezultate" style="-fx-font-weight: bold;" />
-            </children>
-        </HBox>
-
         <HBox prefHeight="350.0" prefWidth="660.0" spacing="15.0" VBox.vgrow="ALWAYS">
             <children>
                 <PieChart fx:id="resultsPieChart" title="Distribucija glasova" HBox.hgrow="ALWAYS" />
@@ -41,7 +33,7 @@
             </children>
         </HBox>
 
-        <Label fx:id="statusLabel" text="Status: Čeka se učitavanje privatnog ključa..." textFill="#555555">
+        <Label fx:id="statusLabel" text="Status: Učitavanje rezultata..." textFill="#555555">
             <font>
                 <Font size="13.0" />
             </font>

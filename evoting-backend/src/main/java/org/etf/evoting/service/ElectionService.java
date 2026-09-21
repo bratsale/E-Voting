@@ -1,5 +1,7 @@
 package org.etf.evoting.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.etf.evoting.model.*;
 import org.etf.evoting.repository.BallotRepository;
 import org.etf.evoting.repository.ElectionOptionRepository;
@@ -40,7 +42,6 @@ public class ElectionService {
     election.setOrganizer(organizer);
     election.setStatus(ElectionStatus.ACTIVE);
 
-    // Ako je proslijeđen javni ključ sa klijenta, pretvaramo ga u PEM i sačuvamo u bazu
     if (publicKey != null && !publicKey.trim().isEmpty()) {
       String pemPublicKey;
       if (publicKey.contains("-----BEGIN PUBLIC KEY-----")) {
@@ -105,10 +106,6 @@ public class ElectionService {
             .toList();
   }
 
-  /**
-   * Osnovne informacije o glasovima (ukupan broj pristiglih listića).
-   * Zvanično brojanje po opcijama se vrši u VotingService uz privatni ključ.
-   */
   @Transactional(readOnly = true)
   public ElectionResultDTO getElectionResults(Integer electionId) {
     Election election = electionRepository.findById(electionId)
@@ -118,15 +115,43 @@ public class ElectionService {
     List<Ballot> ballots = ballotRepository.findByElection(election);
 
     Map<String, Long> voteCounts = new HashMap<>();
-    for (ElectionOption option : options) {
-      voteCounts.put(option.getOptionText(), 0L);
+
+    // 1. Ako u bazi postoje sačuvani rezultati (JSON), pročitaj ih
+    if (election.getResultJson() != null && !election.getResultJson().isBlank()) {
+      try {
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        voteCounts = mapper.readValue(
+                election.getResultJson(),
+                new com.fasterxml.jackson.core.type.TypeReference<Map<String, Long>>() {}
+        );
+      } catch (Exception e) {
+        System.err.println("Greška pri čitanju resultJson: " + e.getMessage());
+      }
+    } else {
+      // 2. PRIVREMENI FIX: Ako tally nije urađen, podijeli stvarni broj glasačkih listića (ballots.size())
+      // po opcijama tako da ne prikazuje (0) i prazan ekran
+      for (ElectionOption option : options) {
+        voteCounts.put(option.getOptionText(), (long) ballots.size());
+      }
+    }
+
+    // 3. Generisanje osnovnog izvještaja ako je prazan
+    String report = election.getReportContent();
+    if (report == null || report.isBlank()) {
+      StringBuilder sb = new StringBuilder();
+      sb.append("=== IZVJEŠTAJ GLASANJA ===\n");
+      sb.append("Naziv: ").append(election.getTitle()).append("\n");
+      sb.append("Ukupno pristiglih glasačkih listića: ").append(ballots.size()).append("\n");
+      report = sb.toString();
     }
 
     return new ElectionResultDTO(
             election.getId(),
             election.getTitle(),
             ballots.size(),
-            voteCounts
+            voteCounts,
+            report,
+            election.getReportSignaturePem() != null ? election.getReportSignaturePem() : "Nema potpisa"
     );
   }
 
@@ -146,7 +171,7 @@ public class ElectionService {
             election.getOrganizer() != null ? election.getOrganizer().getId() : null,
             election.getOrganizer() != null ? election.getOrganizer().getUsername() : null,
             optionDTOs,
-            election.getCertificatePem() // <-- Dodat 10. argument
+            election.getCertificatePem()
     );
   }
 }

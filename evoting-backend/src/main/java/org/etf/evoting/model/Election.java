@@ -34,11 +34,9 @@ public class Election {
   @Column(name = "created_at", insertable = false, updatable = false)
   private LocalDateTime createdAt;
 
-  // Novo polje za sertifikat specifičan za ove izbore
   @Column(name = "certificate_pem", columnDefinition = "TEXT")
   private String certificatePem;
 
-  // Konstruktori
   public Election() {
   }
 
@@ -50,7 +48,6 @@ public class Election {
     this.organizer = organizer;
   }
 
-  // Getteri i Setteri
   public Integer getId() {
     return id;
   }
@@ -121,5 +118,38 @@ public class Election {
 
   public void setCertificatePem(String certificatePem) {
     this.certificatePem = certificatePem;
+  }
+
+  @Column(columnDefinition = "TEXT")
+  private String resultJson; // Moguće čuvati JSON prebrojanih glasova
+
+  @Column(columnDefinition = "TEXT")
+  private String reportContent;
+
+  @Column(columnDefinition = "TEXT")
+  private String reportSignaturePem;
+
+  public String getResultJson() {
+    return resultJson;
+  }
+
+  public void setResultJson(String resultJson) {
+    this.resultJson = resultJson;
+  }
+
+  public String getReportContent() {
+    return reportContent;
+  }
+
+  public void setReportContent(String reportContent) {
+    this.reportContent = reportContent;
+  }
+
+  public String getReportSignaturePem() {
+    return reportSignaturePem;
+  }
+
+  public void setReportSignaturePem(String reportSignaturePem) {
+    this.reportSignaturePem = reportSignaturePem;
   }
 }

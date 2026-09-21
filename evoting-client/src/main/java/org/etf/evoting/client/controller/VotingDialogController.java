@@ -85,7 +85,6 @@ public class VotingDialogController {
         String username = UserSession.getUsername();   // Prilagodi vašoj Session klasi
 
         try {
-            // 1. Odabir .p12 fajla preko FileChooser-a
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Odaberite Vaš .p12 sertifikat za potpisivanje");
             fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PKCS12 Certifikat (*.p12)", "*.p12"));
@@ -98,7 +97,6 @@ public class VotingDialogController {
                 return;
             }
 
-            // 2. Traženje lozinke za .p12 fajl
             TextInputDialog passwordDialog = new TextInputDialog();
             passwordDialog.setTitle("Verifikacija identiteta");
             passwordDialog.setHeaderText("Unesite lozinku za Vaš .p12 kontejner:");
@@ -111,18 +109,14 @@ public class VotingDialogController {
             }
             String p12Password = passwordResult.get();
 
-            // 3. Digitalno potpisivanje glasa
             String rawDataToSign = currentElectionId + ":" + selectedOptionId + ":" + loggedUserId;
             PrivateKey privateKey = KeyStoreHelper.loadPrivateKeyFromP12(p12File, username, p12Password);
             String signatureBase64 = KeyStoreHelper.signData(rawDataToSign, privateKey);
 
-            // 4. Slanje glasa na Backend (/api/voting/cast)
             String receiptCode = sendCastVoteRequest(currentElectionId, selectedOptionId, loggedUserId, signatureBase64);
 
-            // 5. Prikaz potvrde sa receipt code-om
             showReceiptAlert(receiptCode);
 
-            // 6. Callback i zatvaranje
             if (onVoteSubmittedCallback != null) {
                 onVoteSubmittedCallback.run();
             }
@@ -134,16 +128,12 @@ public class VotingDialogController {
         }
     }
 
-    /**
-     * Pomoćna metoda za slanje POST zahtjeva na backend
-     */
     private String sendCastVoteRequest(Integer electionId, Integer optionId, Integer userId, String signatureBase64) throws Exception {
         URL url = new URL("http://localhost:8080/api/voting/cast");
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Content-Type", "application/json");
 
-        // DODAJ OVO (pretpostavljajući da UserSession čuva JWT token iz prijave):
         if (UserSession.getToken() != null) {
             conn.setRequestProperty("Authorization", "Bearer " + UserSession.getToken());
         }
@@ -174,7 +164,6 @@ public class VotingDialogController {
 
         try (InputStream is = conn.getInputStream()) {
             String response = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-            // Ekstrakcija receiptCode-a iz JSON-a
             return extractJsonValue(response, "receiptCode");
         }
     }
@@ -194,7 +183,6 @@ public class VotingDialogController {
         alert.setHeaderText("Vaš glas je enkriptovan i sačuvan!");
         alert.setContentText("Sačuvajte Vaš potvrdni kod (Receipt Code) za kasniju verifikaciju:\n\n" + receiptCode);
 
-        // Mogućnost lakog kopiranja
         TextArea textArea = new TextArea(receiptCode);
         textArea.setEditable(false);
         textArea.setWrapText(true);

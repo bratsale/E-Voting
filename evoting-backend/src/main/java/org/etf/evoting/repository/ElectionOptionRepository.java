@@ -9,9 +9,7 @@ import java.util.List;
 @Repository
 public interface ElectionOptionRepository extends JpaRepository<ElectionOption, Integer> {
 
-  // Izvlačenje svih opcija za specifične izbore
   List<ElectionOption> findByElection(Election election);
 
-  // Alternativna metoda preko ID-ja izbora, ako nam zatreba
   List<ElectionOption> findByElectionId(Integer electionId);
 }
